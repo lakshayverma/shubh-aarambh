@@ -58,6 +58,10 @@ export const SeatingChartsManager: React.FC<SeatingChartsManagerProps> = ({
     () => db.guests.where('weddingId').equals(wedding.id).toArray(),
     [wedding.id]
   );
+  const rsvps = useLiveQuery(
+    () => db.eventRsvps.where('weddingId').equals(wedding.id).toArray(),
+    [wedding.id]
+  );
 
   // Active Ceremony & Seating Plan
   const [selectedEventId, setSelectedEventId] = useState<string>('');
@@ -69,6 +73,7 @@ export const SeatingChartsManager: React.FC<SeatingChartsManagerProps> = ({
 
   // Table Assignment Drawer/Modal
   const [activeElementForSeats, setActiveElementForSeats] = useState<FloorPlanElement | null>(null);
+  const [onlyAttendingFilter, setOnlyAttendingFilter] = useState(true);
 
   // Dragging state
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -381,8 +386,21 @@ export const SeatingChartsManager: React.FC<SeatingChartsManagerProps> = ({
                 </span>
               </div>
 
+              {/* Attending Filter Checkbox */}
+              <div className="flex items-center justify-between px-1">
+                <label className="flex items-center gap-1.5 text-[11px] font-semibold text-theme-text-muted cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={onlyAttendingFilter}
+                    onChange={(e) => setOnlyAttendingFilter(e.target.checked)}
+                    className="rounded text-theme-primary focus:ring-theme-primary"
+                  />
+                  <span>Show attending guests only</span>
+                </label>
+              </div>
+
               {/* Seats List */}
-              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                 {Array.from({ length: activeElementForSeats.capacity }).map((_, idx) => {
                   const seatNum = idx + 1;
                   const assignment = seatAssignments?.find(
@@ -390,6 +408,17 @@ export const SeatingChartsManager: React.FC<SeatingChartsManagerProps> = ({
                   );
                   const assignedGuest = guests?.find((g) => g.id === assignment?.guestId);
                   const guestParty = parties?.find((p) => p.id === assignedGuest?.partyId);
+
+                  // Filter guests based on RSVP if enabled
+                  const displayedGuests = guests?.filter((g) => {
+                    if (g.id === assignment?.guestId) return true; // always show currently seated guest
+                    if (!onlyAttendingFilter) return true;
+                    return rsvps?.some(
+                      (r) =>
+                        (r.guestId === g.id && r.eventId === currentEventId && r.status === 'confirmed') ||
+                        (r.partyId === g.partyId && !r.guestId && r.eventId === currentEventId && r.status === 'confirmed')
+                    );
+                  });
 
                   return (
                     <div
@@ -421,11 +450,16 @@ export const SeatingChartsManager: React.FC<SeatingChartsManagerProps> = ({
                         className="w-full px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-card text-xs text-theme-text-main"
                       >
                         <option value="">-- Vacant Seat --</option>
-                        {guests?.map((g) => {
+                        {displayedGuests?.map((g) => {
                           const p = parties?.find((pty) => pty.id === g.partyId);
+                          const isConfirmed = rsvps?.some(
+                            (r) =>
+                              (r.guestId === g.id && r.eventId === currentEventId && r.status === 'confirmed') ||
+                              (r.partyId === g.partyId && !r.guestId && r.eventId === currentEventId && r.status === 'confirmed')
+                          );
                           return (
                             <option key={g.id} value={g.id}>
-                              {g.name} ({p?.partyName || 'Guest'})
+                              {g.name} ({p?.partyName || 'Guest'}{isConfirmed ? ' • Attending ✓' : ' • No RSVP'})
                             </option>
                           );
                         })}

@@ -137,6 +137,10 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
     () => db.guests.where('weddingId').equals(wedding.id).toArray(),
     [wedding.id]
   );
+  const rsvps = useLiveQuery(
+    () => db.eventRsvps.where('weddingId').equals(wedding.id).toArray(),
+    [wedding.id]
+  );
 
   const [activeTab, setActiveTab] = useState<'fleet' | 'schedule'>('fleet');
 
@@ -155,7 +159,7 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
 
   // Guest tray search and filter
   const [guestSearch, setGuestSearch] = useState('');
-  const [guestTrayFilter, setGuestTrayFilter] = useState<'all' | 'unassigned' | 'assigned'>('all');
+  const [guestTrayFilter, setGuestTrayFilter] = useState<'all' | 'unassigned' | 'assigned' | 'confirmed'>('all');
 
   // Travel Form State
   const [travelPartyId, setTravelPartyId] = useState('');
@@ -208,16 +212,24 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
         (g.specialAssistance && g.specialAssistance.toLowerCase().includes(guestSearch.toLowerCase()));
 
       const isAssigned = guestAssignmentMap.has(g.id);
+      const isConfirmed = rsvps?.some(
+        (r) =>
+          (r.guestId === g.id && r.status === 'confirmed') ||
+          (r.partyId === g.partyId && !r.guestId && r.status === 'confirmed')
+      );
+
       const matchesFilter =
         guestTrayFilter === 'all'
           ? true
           : guestTrayFilter === 'assigned'
           ? isAssigned
+          : guestTrayFilter === 'confirmed'
+          ? isConfirmed
           : !isAssigned;
 
       return matchesSearch && matchesFilter;
     });
-  }, [guests, guestSearch, guestTrayFilter, guestAssignmentMap]);
+  }, [guests, guestSearch, guestTrayFilter, guestAssignmentMap, rsvps]);
 
   // Open Add Travel
   const openAddTravel = () => {
@@ -532,6 +544,17 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
                 All
               </button>
               <button
+                onClick={() => setGuestTrayFilter('confirmed')}
+                className={`flex-1 py-1 rounded transition-colors ${
+                  guestTrayFilter === 'confirmed'
+                    ? 'bg-theme-card text-emerald-700 shadow-2xs font-bold'
+                    : 'text-theme-text-muted'
+                }`}
+                title="Filter confirmed RSVP guests"
+              >
+                Attending
+              </button>
+              <button
                 onClick={() => setGuestTrayFilter('unassigned')}
                 className={`flex-1 py-1 rounded transition-colors ${
                   guestTrayFilter === 'unassigned'
@@ -558,6 +581,11 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
               {filteredTrayGuests.map((g) => {
                 const assigned = guestAssignmentMap.get(g.id);
                 const party = parties?.find((p) => p.id === g.partyId);
+                const isConfirmed = rsvps?.some(
+                  (r) =>
+                    (r.guestId === g.id && r.status === 'confirmed') ||
+                    (r.partyId === g.partyId && !r.guestId && r.status === 'confirmed')
+                );
 
                 return (
                   <div
@@ -586,17 +614,24 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
                         <span className="truncate">{g.name}</span>
                       </div>
 
-                      {assigned ? (
-                        <span
-                          className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 mt-1"
-                          title={`Seated in: ${assigned.vehicleName}`}
-                        />
-                      ) : (
-                        <span
-                          className="w-2 h-2 rounded-full bg-stone-300 flex-shrink-0 mt-1"
-                          title="Unseated"
-                        />
-                      )}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {isConfirmed && (
+                          <span
+                            className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1 py-0.2 rounded"
+                            title="RSVP Confirmed"
+                          >
+                            ✓
+                          </span>
+                        )}
+                        {assigned ? (
+                          <span
+                            className="w-2 h-2 rounded-full bg-emerald-500"
+                            title={`Seated in: ${assigned.vehicleName}`}
+                          />
+                        ) : (
+                          <span className="w-2 h-2 rounded-full bg-stone-300" title="Unseated" />
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-theme-text-muted mt-1">

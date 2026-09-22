@@ -164,34 +164,46 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
 
     if (!rsvps || !parties) return map;
 
-    const partyMap = new Map(parties.map((p) => [p.id, p]));
-    const guestsByParty = new Map<string, number>();
+    // For each ceremony event, compute expected headcount based on party & individual RSVPs
+    for (const evt of events) {
+      for (const party of parties) {
+        const partyMembers = guests?.filter((g) => g.partyId === party.id) || [];
 
-    if (guests) {
-      for (const g of guests) {
-        guestsByParty.set(g.partyId, (guestsByParty.get(g.partyId) || 0) + 1);
-      }
-    }
+        let confirmedCountForParty = 0;
 
-    for (const r of rsvps) {
-      if (r.status !== 'confirmed') continue;
-      if (!map[r.eventId]) continue;
+        if (partyMembers.length > 0) {
+          // Check each member's individual RSVP, falling back to party RSVP
+          for (const m of partyMembers) {
+            const memberRsvp = rsvps.find((r) => r.guestId === m.id && r.eventId === evt.id);
+            if (memberRsvp) {
+              if (memberRsvp.status === 'confirmed') confirmedCountForParty++;
+            } else {
+              const partyRsvp = rsvps.find(
+                (r) => r.partyId === party.id && !r.guestId && r.eventId === evt.id
+              );
+              if (partyRsvp?.status === 'confirmed') confirmedCountForParty++;
+            }
+          }
+        } else {
+          // Party has no individual guest records, check party-level RSVP
+          const partyRsvp = rsvps.find(
+            (r) => r.partyId === party.id && !r.guestId && r.eventId === evt.id
+          );
+          if (partyRsvp?.status === 'confirmed') {
+            confirmedCountForParty = (party.adultsCount || 0) + (party.childrenCount || 0) || 1;
+          }
+        }
 
-      const party = partyMap.get(r.partyId);
-      if (!party) continue;
-
-      const count =
-        guestsByParty.get(party.id) ||
-        (party.adultsCount || 0) + (party.childrenCount || 0) ||
-        1;
-
-      map[r.eventId].total += count;
-      if (party.side === 'ladkiwale') {
-        map[r.eventId].brideCount += count;
-      } else if (party.side === 'ladkewale') {
-        map[r.eventId].groomCount += count;
-      } else {
-        map[r.eventId].mutualCount += count;
+        if (confirmedCountForParty > 0) {
+          map[evt.id].total += confirmedCountForParty;
+          if (party.side === 'ladkiwale') {
+            map[evt.id].brideCount += confirmedCountForParty;
+          } else if (party.side === 'ladkewale') {
+            map[evt.id].groomCount += confirmedCountForParty;
+          } else {
+            map[evt.id].mutualCount += confirmedCountForParty;
+          }
+        }
       }
     }
 

@@ -50,6 +50,10 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
     () => db.guests.where('weddingId').equals(wedding.id).toArray(),
     [wedding.id]
   );
+  const rsvps = useLiveQuery(
+    () => db.eventRsvps.where('weddingId').equals(wedding.id).toArray(),
+    [wedding.id]
+  );
   const allTags = useLiveQuery(() => db.tags.toArray());
 
   // Modals
@@ -57,6 +61,7 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
   const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [activeRoomForAssign, setActiveRoomForAssign] = useState<Room | null>(null);
+  const [selectedAssignGuestIds, setSelectedAssignGuestIds] = useState<string[]>([]);
 
   // Room Form State
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -193,10 +198,21 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
       setAssignPartyId(existing.partyId || '');
       setAssignCheckIn(existing.checkInDate);
       setAssignCheckOut(existing.checkOutDate);
+      setSelectedAssignGuestIds(existing.guestIds || []);
       setWelcomeHamper(existing.welcomeHamperDelivered);
       setSpecialRequests(existing.specialRequests || '');
     } else {
-      setAssignPartyId(parties?.[0]?.id || '');
+      const defaultPartyId = parties?.[0]?.id || '';
+      setAssignPartyId(defaultPartyId);
+      if (defaultPartyId) {
+        const pGuests = guests?.filter((g) => g.partyId === defaultPartyId) || [];
+        const confirmedIds = pGuests
+          .filter((g) => rsvps?.some((r) => r.guestId === g.id && r.status === 'confirmed'))
+          .map((g) => g.id);
+        setSelectedAssignGuestIds(confirmedIds.length > 0 ? confirmedIds : pGuests.map((g) => g.id));
+      } else {
+        setSelectedAssignGuestIds([]);
+      }
       setAssignCheckIn(wedding.startDate);
       setAssignCheckOut(wedding.endDate);
       setWelcomeHamper(true);
@@ -205,19 +221,29 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
     setIsAssignModalOpen(true);
   };
 
+  const handleAssignPartyChange = (partyId: string) => {
+    setAssignPartyId(partyId);
+    if (!partyId) {
+      setSelectedAssignGuestIds([]);
+      return;
+    }
+    const pGuests = guests?.filter((g) => g.partyId === partyId) || [];
+    const confirmedIds = pGuests
+      .filter((g) => rsvps?.some((r) => r.guestId === g.id && r.status === 'confirmed'))
+      .map((g) => g.id);
+    setSelectedAssignGuestIds(confirmedIds.length > 0 ? confirmedIds : pGuests.map((g) => g.id));
+  };
+
   const handleSaveAllocation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeRoomForAssign || !assignPartyId) return;
-
-    const partyGuests = guests?.filter((g) => g.partyId === assignPartyId) || [];
-    const guestIds = partyGuests.map((g) => g.id);
 
     const allocationRecord: RoomAllocation = {
       id: `alloc-${activeRoomForAssign.id}`,
       weddingId: wedding.id,
       roomId: activeRoomForAssign.id,
       partyId: assignPartyId,
-      guestIds,
+      guestIds: selectedAssignGuestIds,
       checkInDate: assignCheckIn,
       checkOutDate: assignCheckOut,
       welcomeHamperDelivered: welcomeHamper,
@@ -682,18 +708,87 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
                 <label className="text-xs font-bold text-theme-text-main">Select Guest Family / Party *</label>
                 <select
                   value={assignPartyId}
-                  onChange={(e) => setAssignPartyId(e.target.value)}
+                  onChange={(e) => handleAssignPartyChange(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
                   required
                 >
                   <option value="">-- Choose Party --</option>
-                  {parties?.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.partyName} ({p.adultsCount}A + {p.childrenCount}C, {p.side})
-                    </option>
-                  ))}
+                  {parties?.map((p) => {
+                    const pGuests = guests?.filter((g) => g.partyId === p.id) || [];
+                    const confirmedCount = pGuests.filter((g) =>
+                      rsvps?.some((r) => r.guestId === g.id && r.status === 'confirmed')
+                    ).length;
+                    const rsvpNote =
+                      pGuests.length > 0
+                        ? ` • ${confirmedCount}/${pGuests.length} RSVP Confirmed`
+                        : '';
+
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.partyName} ({p.adultsCount}A + {p.childrenCount}C, {p.side}{rsvpNote})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
+
+              {/* Granular member selection with RSVP status */}
+              {assignPartyId && (
+                <div className="space-y-1.5 p-3 rounded-2xl border border-theme-border bg-theme-background/60">
+                  <div className="flex items-center justify-between text-xs font-bold text-theme-text-main">
+                    <span>Assign Specific Members to this Room</span>
+                    <span className="text-[10px] text-theme-text-muted">
+                      {selectedAssignGuestIds.length} of{' '}
+                      {guests?.filter((g) => g.partyId === assignPartyId).length || 0} selected
+                    </span>
+                  </div>
+                  <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                    {guests
+                      ?.filter((g) => g.partyId === assignPartyId)
+                      .map((g) => {
+                        const isSelected = selectedAssignGuestIds.includes(g.id);
+                        const hasConfirmedRsvp = rsvps?.some(
+                          (r) => r.guestId === g.id && r.status === 'confirmed'
+                        );
+                        return (
+                          <label
+                            key={g.id}
+                            className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'border-theme-primary bg-theme-card font-semibold text-theme-text-main'
+                                : 'border-theme-border/60 bg-theme-background text-theme-text-muted'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedAssignGuestIds([...selectedAssignGuestIds, g.id]);
+                                  } else {
+                                    setSelectedAssignGuestIds(
+                                      selectedAssignGuestIds.filter((id) => id !== g.id)
+                                    );
+                                  }
+                                }}
+                                className="rounded text-theme-primary focus:ring-theme-primary"
+                              />
+                              <span>{g.name}</span>
+                            </div>
+                            {hasConfirmedRsvp ? (
+                              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                                ✓ Attending
+                              </span>
+                            ) : (
+                              <span className="text-[9px] text-stone-400">No RSVP</span>
+                            )}
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">

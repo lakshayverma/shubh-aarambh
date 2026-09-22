@@ -376,20 +376,114 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
     }
   };
 
-  const toggleEventRsvp = async (partyId: string, eventId: string) => {
-    const existing = rsvps?.find((r) => r.partyId === partyId && r.eventId === eventId);
-    if (existing) {
-      const nextStatus = existing.status === 'confirmed' ? 'declined' : 'confirmed';
-      await db.eventRsvps.update(existing.id, { status: nextStatus });
+  // Helper: check if a specific guest is confirmed for an event
+  const isGuestConfirmed = (guestId: string, partyId: string, eventId: string): boolean => {
+    const directRsvp = rsvps?.find((r) => r.guestId === guestId && r.eventId === eventId);
+    if (directRsvp) {
+      return directRsvp.status === 'confirmed';
+    }
+    // Fallback to party-level RSVP if no direct individual RSVP exists
+    const partyRsvp = rsvps?.find((r) => r.partyId === partyId && !r.guestId && r.eventId === eventId);
+    return partyRsvp?.status === 'confirmed';
+  };
+
+  // Helper: get party RSVP stats for an event (confirmed count and total count)
+  const getPartyEventStats = (party: GuestParty, eventId: string) => {
+    const partyMembers = guests?.filter((g) => g.partyId === party.id) || [];
+    if (partyMembers.length === 0) {
+      const partyRsvp = rsvps?.find((r) => r.partyId === party.id && !r.guestId && r.eventId === eventId);
+      const isConfirmed = partyRsvp?.status === 'confirmed';
+      const total = (party.adultsCount || 0) + (party.childrenCount || 0) || 1;
+      return {
+        confirmedCount: isConfirmed ? total : 0,
+        totalCount: total,
+        isAllConfirmed: isConfirmed,
+        isPartial: false,
+      };
+    }
+
+    let confirmedCount = 0;
+    for (const member of partyMembers) {
+      if (isGuestConfirmed(member.id, party.id, eventId)) {
+        confirmedCount++;
+      }
+    }
+
+    return {
+      confirmedCount,
+      totalCount: partyMembers.length,
+      isAllConfirmed: confirmedCount === partyMembers.length,
+      isPartial: confirmedCount > 0 && confirmedCount < partyMembers.length,
+    };
+  };
+
+  // Toggle RSVP for an individual guest
+  const toggleIndividualGuestRsvp = async (guestId: string, partyId: string, eventId: string) => {
+    const currentlyConfirmed = isGuestConfirmed(guestId, partyId, eventId);
+    const nextStatus = currentlyConfirmed ? 'declined' : 'confirmed';
+
+    const existingDirect = rsvps?.find((r) => r.guestId === guestId && r.eventId === eventId);
+    if (existingDirect) {
+      await db.eventRsvps.update(existingDirect.id, { status: nextStatus });
     } else {
       await db.eventRsvps.put({
-        id: `rsvp-${partyId}-${eventId}`,
+        id: `rsvp-${guestId}-${eventId}`,
         weddingId: wedding.id,
         partyId,
+        guestId,
         eventId,
-        status: 'confirmed',
+        status: nextStatus,
       });
     }
+  };
+
+  // Toggle RSVP for entire party at once
+  const toggleWholePartyRsvp = async (partyId: string, eventId: string) => {
+    const party = parties?.find((p) => p.id === partyId);
+    if (!party) return;
+
+    const stats = getPartyEventStats(party, eventId);
+    // If all are confirmed, switch all to declined; otherwise switch all to confirmed
+    const nextStatus = stats.isAllConfirmed ? 'declined' : 'confirmed';
+
+    const partyMembers = guests?.filter((g) => g.partyId === partyId) || [];
+
+    await db.transaction('rw', [db.eventRsvps], async () => {
+      // Update/put party-level record
+      const existingPartyRsvp = rsvps?.find(
+        (r) => r.partyId === partyId && !r.guestId && r.eventId === eventId
+      );
+      if (existingPartyRsvp) {
+        await db.eventRsvps.update(existingPartyRsvp.id, { status: nextStatus });
+      } else {
+        await db.eventRsvps.put({
+          id: `rsvp-${partyId}-${eventId}`,
+          weddingId: wedding.id,
+          partyId,
+          eventId,
+          status: nextStatus,
+        });
+      }
+
+      // If there are individual members, sync all their individual records as well
+      for (const m of partyMembers) {
+        const existingMemberRsvp = rsvps?.find(
+          (r) => r.guestId === m.id && r.eventId === eventId
+        );
+        if (existingMemberRsvp) {
+          await db.eventRsvps.update(existingMemberRsvp.id, { status: nextStatus });
+        } else {
+          await db.eventRsvps.put({
+            id: `rsvp-${m.id}-${eventId}`,
+            weddingId: wedding.id,
+            partyId,
+            guestId: m.id,
+            eventId,
+            status: nextStatus,
+          });
+        }
+      }
+    });
   };
 
   // CSV Export
@@ -780,23 +874,27 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                         </div>
                       </td>
 
-                      {/* Multi-event RSVP checkboxes */}
+                      {/* Multi-event RSVP checkboxes with party stats */}
                       {events?.map((ev) => {
-                        const rsvp = rsvps?.find((r) => r.partyId === party.id && r.eventId === ev.id);
-                        const isConfirmed = rsvp?.status === 'confirmed';
+                        const stats = getPartyEventStats(party, ev.id);
 
                         return (
                           <td key={ev.id} className="py-3 px-2 text-center">
                             <button
-                              onClick={() => toggleEventRsvp(party.id, ev.id)}
-                              className={`w-7 h-7 rounded-xl flex items-center justify-center mx-auto transition-all ${
-                                isConfirmed
+                              onClick={() => toggleWholePartyRsvp(party.id, ev.id)}
+                              className={`px-2 py-1 rounded-xl flex items-center justify-center gap-1 mx-auto transition-all text-xs font-bold ${
+                                stats.isAllConfirmed
                                   ? 'bg-emerald-500 text-white shadow-xs scale-105'
+                                  : stats.isPartial
+                                  ? 'bg-amber-500 text-white shadow-xs'
                                   : 'bg-theme-border/50 text-theme-text-muted hover:bg-theme-border'
                               }`}
-                              title={`${ev.name}: ${isConfirmed ? 'Attending' : 'Not attending'} (Click to toggle)`}
+                              title={`${ev.name}: ${stats.confirmedCount}/${stats.totalCount} attending. Click to toggle whole party.`}
                             >
-                              <CheckCircle2 className="w-4 h-4" />
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                              <span className="text-[10px]">
+                                {stats.confirmedCount}/{stats.totalCount}
+                              </span>
                             </button>
                           </td>
                         );
@@ -895,6 +993,38 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                                           <span>{g.specialAssistance}</span>
                                         </div>
                                       )}
+                                    </div>
+
+                                    {/* Individual Ceremony RSVP Matrix */}
+                                    <div className="border-t border-theme-border/60 pt-2 space-y-1">
+                                      <span className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider block">
+                                        Ceremony RSVPs:
+                                      </span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {events?.map((ev) => {
+                                          const isConfirmed = isGuestConfirmed(g.id, party.id, ev.id);
+                                          return (
+                                            <button
+                                              key={ev.id}
+                                              type="button"
+                                              onClick={() => toggleIndividualGuestRsvp(g.id, party.id, ev.id)}
+                                              className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold border flex items-center gap-1 transition-all ${
+                                                isConfirmed
+                                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold shadow-2xs'
+                                                  : 'bg-theme-background text-theme-text-muted border-theme-border hover:bg-theme-border/20'
+                                              }`}
+                                              title={`Toggle ${g.name}'s RSVP for ${ev.name} (${isConfirmed ? 'Attending' : 'Not attending'})`}
+                                            >
+                                              <span
+                                                className={`w-1.5 h-1.5 rounded-full ${
+                                                  isConfirmed ? 'bg-emerald-600' : 'bg-stone-300'
+                                                }`}
+                                              />
+                                              <span className="truncate max-w-[85px]">{ev.name}</span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
