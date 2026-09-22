@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import { Wedding, FamilyMember, Tag, Guest, GuestParty } from '../../db/schema';
+import { Wedding, FamilyMember, Tag, Guest, GuestParty, FamilyRelationLink } from '../../db/schema';
 import { TagBadge } from '../tags/TagBadge';
 import { TagSelector } from '../tags/TagSelector';
 import {
@@ -13,6 +13,7 @@ import {
   Edge,
   Position,
   Handle,
+  MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -32,6 +33,10 @@ import {
   UserCheck,
   Star,
   Check,
+  Link2,
+  Share2,
+  Workflow,
+  ArrowRight,
 } from 'lucide-react';
 
 interface FamilyManagerProps {
@@ -73,6 +78,8 @@ const FamilyMemberNode: React.FC<{
       }`}
     >
       <Handle type="target" position={Position.Top} className="!bg-theme-primary" />
+      <Handle type="target" id="target-left" position={Position.Left} className="!bg-theme-primary" />
+      <Handle type="source" id="source-left" position={Position.Left} className="!bg-theme-primary" />
 
       <div className="flex items-center justify-between gap-1 mb-1.5 flex-wrap">
         <span
@@ -135,6 +142,8 @@ const FamilyMemberNode: React.FC<{
         </div>
       )}
 
+      <Handle type="target" id="target-right" position={Position.Right} className="!bg-theme-primary" />
+      <Handle type="source" id="source-right" position={Position.Right} className="!bg-theme-primary" />
       <Handle type="source" position={Position.Bottom} className="!bg-theme-primary" />
     </div>
   );
@@ -161,6 +170,10 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
     [wedding.id]
   );
   const allTags = useLiveQuery(() => db.tags.toArray());
+  const customRelations = useLiveQuery(
+    () => db.familyRelations.where('weddingId').equals(wedding.id).toArray(),
+    [wedding.id]
+  );
 
   const brideTerm = wedding.brideSideTerm || "Bride's Side (Ladkiwale)";
   const groomTerm = wedding.groomSideTerm || "Groom's Side (Ladkewale)";
@@ -169,6 +182,13 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
   const [filterSource, setFilterSource] = useState<'all' | 'family_core' | 'guest_list'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
+
+  // Cross-group / Kinship Link Modal States
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkFromMemberId, setLinkFromMemberId] = useState('');
+  const [linkToMemberId, setLinkToMemberId] = useState('');
+  const [linkRelationType, setLinkRelationType] = useState<FamilyRelationLink['relationType']>('cross_family');
+  const [linkLabel, setLinkLabel] = useState('');
 
   // Form states
   const [name, setName] = useState('');
@@ -344,7 +364,7 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
     }
   };
 
-  // Convert unified relatives into React Flow Nodes and Edges
+  // Convert unified relatives into React Flow Nodes and Edges with enhanced spacing and links
   const { flowNodes, flowEdges } = useMemo(() => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
@@ -359,56 +379,152 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
         ? unifiedLadkiwale
         : unifiedLadkiwale.filter((m) => m.source === filterSource);
 
-    // Position groups across generations
-    const positionGroup = (group: UnifiedRelativeItem[], startX: number) => {
+    // Spacing constants: 320px horizontal node pitch (leaving ~80px-120px gap), 200px vertical tier pitch
+    const NODE_WIDTH_PITCH = 320;
+    const GEN_Y_COORDS: Record<number, number> = {
+      1: 60,   // Elders (Nana/Dada)
+      2: 260,  // Parents (Maa/Papa, Chacha/Mama)
+      3: 460,  // Couple & Siblings / Peers
+      4: 660,  // Children / Next Gen
+    };
+
+    // Calculate dynamic separation between Groom side and Bride side
+    const groomGen1Count = activeGroom.filter((m) => m.generationLevel === 1).length;
+    const groomGen2Count = activeGroom.filter((m) => m.generationLevel === 2).length;
+    const groomGen3Count = activeGroom.filter((m) => m.generationLevel === 3).length;
+    const groomGen4Count = activeGroom.filter((m) => m.generationLevel >= 4).length;
+    const groomMaxPerRow = Math.max(groomGen1Count, groomGen2Count, groomGen3Count, groomGen4Count, 1);
+
+    const groomStartX = 60;
+    const groomTotalWidth = groomMaxPerRow * NODE_WIDTH_PITCH;
+    // Generous gap between Groom and Bride side (at least 450px)
+    const brideStartX = groomStartX + groomTotalWidth + 450;
+
+    // Track node positions by ID for edge creation
+    const nodePositionMap = new Map<string, { x: number; y: number; gen: number; side: string }>();
+
+    // Helper to position a group
+    const positionGroup = (group: UnifiedRelativeItem[], startX: number, sideKey: string) => {
       const gen1 = group.filter((m) => m.generationLevel === 1);
       const gen2 = group.filter((m) => m.generationLevel === 2);
       const gen3 = group.filter((m) => m.generationLevel === 3);
       const gen4 = group.filter((m) => m.generationLevel >= 4);
 
-      gen1.forEach((m, idx) => {
-        nodes.push({
-          id: m.id,
-          type: 'familyNode',
-          position: { x: startX + idx * 230, y: 50 },
-          data: { item: m, tags: allTags?.filter((t) => m.tagIds?.includes(t.id)) || [] },
-        });
-      });
+      const placeRow = (membersInRow: UnifiedRelativeItem[], gen: number) => {
+        membersInRow.forEach((m, idx) => {
+          const posX = startX + idx * NODE_WIDTH_PITCH;
+          const posY = GEN_Y_COORDS[gen] || (660 + (gen - 4) * 200);
 
-      gen2.forEach((m, idx) => {
-        nodes.push({
-          id: m.id,
-          type: 'familyNode',
-          position: { x: startX + idx * 230, y: 220 },
-          data: { item: m, tags: allTags?.filter((t) => m.tagIds?.includes(t.id)) || [] },
-        });
-      });
+          nodes.push({
+            id: m.id,
+            type: 'familyNode',
+            position: { x: posX, y: posY },
+            data: { item: m, tags: allTags?.filter((t) => m.tagIds?.includes(t.id)) || [] },
+          });
 
-      gen3.forEach((m, idx) => {
-        nodes.push({
-          id: m.id,
-          type: 'familyNode',
-          position: { x: startX + idx * 230, y: 390 },
-          data: { item: m, tags: allTags?.filter((t) => m.tagIds?.includes(t.id)) || [] },
+          nodePositionMap.set(m.id, { x: posX, y: posY, gen, side: sideKey });
         });
-      });
+      };
 
-      gen4.forEach((m, idx) => {
-        nodes.push({
-          id: m.id,
-          type: 'familyNode',
-          position: { x: startX + idx * 230, y: 560 },
-          data: { item: m, tags: allTags?.filter((t) => m.tagIds?.includes(t.id)) || [] },
+      placeRow(gen1, 1);
+      placeRow(gen2, 2);
+      placeRow(gen3, 3);
+      placeRow(gen4, 4);
+
+      // Hierarchical Generation Linking (Generational parent-child edges within each side)
+      // Connect Gen 1 elders to Gen 2 parents, and Gen 2 parents to Gen 3
+      if (gen1.length > 0 && gen2.length > 0) {
+        // Connect chief elder to first parents
+        edges.push({
+          id: `edge-gen1-gen2-${sideKey}`,
+          source: gen1[0].id,
+          target: gen2[0].id,
+          type: 'smoothstep',
+          style: { stroke: sideKey === 'groom' ? '#d97706' : '#f43f5e', strokeWidth: 2, strokeDasharray: '4,4' },
+          label: 'Elder Lineage',
+          labelStyle: { fontSize: 10, fill: '#6b7280', fontWeight: 600 },
+          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.85 },
         });
-      });
+      }
+
+      if (gen2.length > 0 && gen3.length > 0) {
+        // Connect parents to siblings/couple
+        edges.push({
+          id: `edge-gen2-gen3-${sideKey}`,
+          source: gen2[0].id,
+          target: gen3[0].id,
+          type: 'smoothstep',
+          style: { stroke: sideKey === 'groom' ? '#b45309' : '#e11d48', strokeWidth: 2 },
+          label: 'Parental Guidance',
+          labelStyle: { fontSize: 10, fill: '#6b7280', fontWeight: 600 },
+          labelBgStyle: { fill: '#ffffff', fillOpacity: 0.85 },
+        });
+      }
     };
 
-    // Groom relatives on Left (startX: 50), Bride relatives on Right (startX: 750)
-    positionGroup(activeGroom, 50);
-    positionGroup(activeBride, 750);
+    // Position Groom side and Bride side
+    positionGroup(activeGroom, groomStartX, 'groom');
+    positionGroup(activeBride, brideStartX, 'bride');
+
+    // Central Wedding Bond Edge between Groom's generation 3 and Bride's generation 3
+    const groomGen3 = activeGroom.filter((m) => m.generationLevel === 3);
+    const brideGen3 = activeBride.filter((m) => m.generationLevel === 3);
+
+    if (groomGen3.length > 0 && brideGen3.length > 0) {
+      edges.push({
+        id: 'edge-sacred-union',
+        source: groomGen3[0].id,
+        sourceHandle: 'source-right',
+        target: brideGen3[0].id,
+        targetHandle: 'target-left',
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: '#d97706', strokeWidth: 3 },
+        label: '💍 Sacred Vivah Union 💍',
+        labelStyle: { fontSize: 12, fill: '#7b1113', fontWeight: 700 },
+        labelBgStyle: { fill: '#fffbeb', stroke: '#d97706', strokeWidth: 1.5, rx: 8, ry: 8 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#d97706' },
+        markerStart: { type: MarkerType.ArrowClosed, color: '#d97706' },
+      });
+    }
+
+    // Custom Relations & Cross-Family Kinship Edges from IndexedDB
+    if (customRelations && customRelations.length > 0) {
+      customRelations.forEach((rel) => {
+        // Only render if both endpoints exist in the active graph
+        const fromNode = nodePositionMap.get(rel.fromMemberId);
+        const toNode = nodePositionMap.get(rel.toMemberId);
+
+        if (fromNode && toNode) {
+          const isCrossSide = fromNode.side !== toNode.side;
+          const isHorizontal = fromNode.gen === toNode.gen;
+
+          let edgeColor = '#6366f1'; // indigo default
+          if (rel.relationType === 'spouse') edgeColor = '#ec4899'; // pink
+          else if (rel.relationType === 'cross_family') edgeColor = '#8b5cf6'; // purple
+          else if (rel.relationType === 'parent_child') edgeColor = '#059669'; // emerald
+          else if (rel.relationType === 'sibling') edgeColor = '#0284c7'; // sky blue
+          else if (rel.relationType === 'in_law') edgeColor = '#f59e0b'; // amber
+
+          edges.push({
+            id: `edge-rel-${rel.id}`,
+            source: rel.fromMemberId,
+            sourceHandle: isHorizontal ? (fromNode.x < toNode.x ? 'source-right' : 'source-left') : undefined,
+            target: rel.toMemberId,
+            targetHandle: isHorizontal ? (fromNode.x < toNode.x ? 'target-left' : 'target-right') : undefined,
+            type: isCrossSide ? 'smoothstep' : 'default',
+            animated: rel.relationType === 'spouse' || rel.relationType === 'cross_family',
+            style: { stroke: edgeColor, strokeWidth: 2 },
+            label: rel.label,
+            labelStyle: { fontSize: 10, fill: edgeColor, fontWeight: 700 },
+            labelBgStyle: { fill: '#ffffff', stroke: edgeColor, strokeWidth: 1, rx: 6, ry: 6 },
+          });
+        }
+      });
+    }
 
     return { flowNodes: nodes, flowEdges: edges };
-  }, [unifiedLadkewale, unifiedLadkiwale, allTags, filterSource]);
+  }, [unifiedLadkewale, unifiedLadkiwale, allTags, filterSource, customRelations]);
 
   const displayedLadkewale =
     filterSource === 'all'
@@ -592,39 +708,271 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
 
       {/* VIEW 2: React Flow Genealogical Graph View */}
       {viewMode === 'graph' && (
-        <div className="bg-theme-card border border-theme-border rounded-3xl p-4 shadow-2xs space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-xs text-theme-text-muted">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5 font-bold text-amber-700">
+        <div className="bg-theme-card border border-theme-border rounded-3xl p-5 shadow-2xs space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-xs">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-1.5 font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <span>{groomTerm} (Left)</span>
+                <span>{groomTerm} (Left Wing)</span>
               </div>
-              <div className="flex items-center gap-1.5 font-bold text-rose-700">
+              <div className="flex items-center gap-1.5 font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-xl">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                <span>{brideTerm} (Right)</span>
+                <span>{brideTerm} (Right Wing)</span>
+              </div>
+              <div className="flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-xl">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                <span>Cross-Family Link</span>
               </div>
             </div>
-            <div className="text-[11px]">
-              Elders (Top) &rarr; Parents &rarr; Couple & Peers &rarr; Children (Bottom)
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const allRelativeList = [...unifiedLadkewale, ...unifiedLadkiwale];
+                  if (allRelativeList.length >= 2) {
+                    setLinkFromMemberId(allRelativeList[0].id);
+                    setLinkToMemberId(allRelativeList[1].id);
+                  }
+                  setLinkRelationType('cross_family');
+                  setLinkLabel('');
+                  setIsLinkModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                <span>+ Link Relatives / Cross-Family</span>
+              </button>
             </div>
           </div>
 
-          <div className="w-full h-[650px] border border-theme-border/60 rounded-2xl overflow-hidden bg-theme-background">
+          {/* Active Custom Relations Ribbon */}
+          {customRelations && customRelations.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto py-1 px-2 bg-theme-background border border-theme-border/60 rounded-2xl text-xs">
+              <span className="font-bold text-theme-text-muted shrink-0 flex items-center gap-1 text-[11px]">
+                <Workflow className="w-3.5 h-3.5 text-theme-primary" />
+                <span>Active Kinship Links ({customRelations.length}):</span>
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {customRelations.map((rel) => {
+                  const allRelMap = new Map<string, string>();
+                  for (const m of [...unifiedLadkewale, ...unifiedLadkiwale]) {
+                    allRelMap.set(m.id, m.name);
+                  }
+                  const fromName = allRelMap.get(rel.fromMemberId) || 'Unknown';
+                  const toName = allRelMap.get(rel.toMemberId) || 'Unknown';
+
+                  return (
+                    <span
+                      key={rel.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-theme-card border border-theme-border text-[11px] font-medium text-theme-text-main shadow-2xs"
+                    >
+                      <strong className="text-theme-primary">{fromName}</strong>
+                      <span className="text-theme-text-muted">&rarr;</span>
+                      <strong className="text-theme-secondary">{toName}</strong>
+                      <span className="text-[10px] bg-theme-background px-1.5 py-0.5 rounded text-theme-text-muted">
+                        {rel.label}
+                      </span>
+                      <button
+                        onClick={async () => {
+                          if (confirm(`Remove relation link "${rel.label}"?`)) {
+                            await db.familyRelations.delete(rel.id);
+                          }
+                        }}
+                        className="text-theme-text-muted hover:text-rose-600 p-0.5 rounded"
+                        title="Remove link"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Canvas with generous dimensions */}
+          <div className="w-full h-[720px] border border-theme-border/60 rounded-2xl overflow-hidden bg-theme-background">
             <ReactFlow
               nodes={flowNodes}
               edges={flowEdges}
               nodeTypes={nodeTypes}
               fitView
-              minZoom={0.2}
+              minZoom={0.15}
               maxZoom={1.5}
             >
-              <Background color="#cbd5e1" gap={20} size={1} />
+              <Background color="#cbd5e1" gap={24} size={1.2} />
               <Controls />
               <MiniMap
-                nodeColor={(n) => (n.position.x < 500 ? '#f59e0b' : '#f43f5e')}
-                style={{ height: 100, width: 140, borderRadius: 12 }}
+                nodeColor={(n) => (n.position.x < 1000 ? '#f59e0b' : '#f43f5e')}
+                style={{ height: 110, width: 150, borderRadius: 12 }}
               />
             </ReactFlow>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Relation Link Modal */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div
+            className="bg-theme-card border border-theme-border w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Link2 className="w-5 h-5 text-theme-primary" />
+                <h3 className="font-serif font-bold text-lg text-theme-text-main">
+                  Create Kinship / Cross-Family Link
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsLinkModalOpen(false)}
+                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!linkFromMemberId || !linkToMemberId || linkFromMemberId === linkToMemberId) {
+                  alert('Please select two different relatives to link.');
+                  return;
+                }
+
+                const allRelMap = new Map<string, UnifiedRelativeItem>();
+                for (const m of [...unifiedLadkewale, ...unifiedLadkiwale]) {
+                  allRelMap.set(m.id, m);
+                }
+                const m1 = allRelMap.get(linkFromMemberId);
+                const m2 = allRelMap.get(linkToMemberId);
+
+                let defaultLabel = linkLabel.trim();
+                if (!defaultLabel) {
+                  if (linkRelationType === 'spouse') defaultLabel = 'Husband & Wife';
+                  else if (linkRelationType === 'cross_family') defaultLabel = 'Cross-Family Alliance';
+                  else if (linkRelationType === 'parent_child') defaultLabel = 'Parent & Child';
+                  else if (linkRelationType === 'sibling') defaultLabel = 'Brother & Sister / Siblings';
+                  else if (linkRelationType === 'in_law') defaultLabel = 'In-Law Connection';
+                  else defaultLabel = 'Related';
+                }
+
+                const newRel: FamilyRelationLink = {
+                  id: `rel-${Date.now()}`,
+                  weddingId: wedding.id,
+                  fromMemberId: linkFromMemberId,
+                  toMemberId: linkToMemberId,
+                  relationType: linkRelationType,
+                  label: defaultLabel,
+                };
+
+                await db.familyRelations.put(newRel);
+                setIsLinkModalOpen(false);
+              }}
+              className="p-6 space-y-4"
+            >
+              <p className="text-xs text-theme-text-muted">
+                Connect relatives within or across families (e.g. Samdhi-Samdhan, Spouses, In-Laws, or custom family bonds) to render visible kinship edges in the tree graph.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-theme-text-main">Person 1 *</label>
+                  <select
+                    value={linkFromMemberId}
+                    onChange={(e) => setLinkFromMemberId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                    required
+                  >
+                    <optgroup label={groomTerm}>
+                      {unifiedLadkewale.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.relation})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={brideTerm}>
+                      {unifiedLadkiwale.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.relation})
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-theme-text-main">Person 2 *</label>
+                  <select
+                    value={linkToMemberId}
+                    onChange={(e) => setLinkToMemberId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                    required
+                  >
+                    <optgroup label={brideTerm}>
+                      {unifiedLadkiwale.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.relation})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={groomTerm}>
+                      {unifiedLadkewale.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.relation})
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-theme-text-main">Relationship Type *</label>
+                  <select
+                    value={linkRelationType}
+                    onChange={(e) => setLinkRelationType(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                  >
+                    <option value="cross_family">Cross-Family Alliance (Purple)</option>
+                    <option value="spouse">Spouse / Couple (Pink)</option>
+                    <option value="parent_child">Parent - Child Lineage (Green)</option>
+                    <option value="sibling">Siblings / Cousins (Blue)</option>
+                    <option value="in_law">In-Law Bond (Amber)</option>
+                    <option value="custom">Custom Relation (Indigo)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-theme-text-main">Edge Label / Description</label>
+                  <input
+                    type="text"
+                    value={linkLabel}
+                    onChange={(e) => setLinkLabel(e.target.value)}
+                    placeholder="e.g. Samdhi, Mami-Bhanja, Jija-Saali"
+                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLinkModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
+                >
+                  Create Relation Link
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

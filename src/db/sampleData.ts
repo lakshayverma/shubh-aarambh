@@ -17,6 +17,7 @@ import {
   FloorPlanElement,
   TableSeatAssignment,
   EInvite,
+  FamilyRelationLink,
 } from './schema';
 
 export async function seedSampleWedding(): Promise<string> {
@@ -490,6 +491,50 @@ export async function seedSampleWedding(): Promise<string> {
     },
   ];
 
+  // Pillar 2 Sample Relationships (Cross-family & Inter-family links)
+  const familyRelations: FamilyRelationLink[] = [
+    {
+      id: 'rel-parents-g',
+      weddingId,
+      fromMemberId: 'fam-g-dad',
+      toMemberId: 'fam-g-mom',
+      relationType: 'spouse',
+      label: 'Husband & Wife',
+    },
+    {
+      id: 'rel-parents-b',
+      weddingId,
+      fromMemberId: 'fam-b-dad',
+      toMemberId: 'fam-b-mom',
+      relationType: 'spouse',
+      label: 'Husband & Wife',
+    },
+    {
+      id: 'rel-cross-samdhi',
+      weddingId,
+      fromMemberId: 'fam-g-dad',
+      toMemberId: 'fam-b-dad',
+      relationType: 'cross_family',
+      label: 'Samdhi (Groom & Bride Fathers)',
+    },
+    {
+      id: 'rel-cross-samdhan',
+      weddingId,
+      fromMemberId: 'fam-g-mom',
+      toMemberId: 'fam-b-mom',
+      relationType: 'cross_family',
+      label: 'Samdhan (Groom & Bride Mothers)',
+    },
+    {
+      id: 'rel-in-law-cousins',
+      weddingId,
+      fromMemberId: 'fam-g-bro',
+      toMemberId: 'fam-b-sis',
+      relationType: 'in_law',
+      label: 'Future Brother-in-Law & Sister-in-Law',
+    },
+  ];
+
   // Bulk add to IndexedDB
   await db.transaction('rw', db.tables, async () => {
     await db.weddings.put(sampleWedding);
@@ -509,6 +554,7 @@ export async function seedSampleWedding(): Promise<string> {
     await db.floorPlanElements.bulkPut(floorPlanElements);
     await db.tableSeatAssignments.bulkPut(tableSeatAssignments);
     await db.eInvites.bulkPut(sampleEInvites);
+    await db.familyRelations.bulkPut(familyRelations);
   });
 
   return weddingId;

@@ -17,6 +17,7 @@ import {
   FloorPlanElement,
   TableSeatAssignment,
   EInvite,
+  FamilyRelationLink,
 } from './schema';
 
 export class VivahDatabase extends Dexie {
@@ -37,6 +38,7 @@ export class VivahDatabase extends Dexie {
   floorPlanElements!: Table<FloorPlanElement, string>;
   tableSeatAssignments!: Table<TableSeatAssignment, string>;
   eInvites!: Table<EInvite, string>;
+  familyRelations!: Table<FamilyRelationLink, string>;
 
   constructor() {
     super('VivahPlannerDB');
@@ -59,6 +61,7 @@ export class VivahDatabase extends Dexie {
       floorPlanElements: 'id, seatingPlanId, type',
       tableSeatAssignments: 'id, elementId, guestId',
       eInvites: 'id, weddingId, slug',
+      familyRelations: 'id, weddingId, fromMemberId, toMemberId',
     });
   }
 }

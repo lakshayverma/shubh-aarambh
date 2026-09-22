@@ -20,6 +20,7 @@ export interface BackupData {
   floorPlanElements: any[];
   tableSeatAssignments: any[];
   eInvites: any[];
+  familyRelations?: any[];
 }
 
 /**
@@ -44,6 +45,7 @@ export async function exportDatabaseToJson(): Promise<string> {
     floorPlanElements,
     tableSeatAssignments,
     eInvites,
+    familyRelations,
   ] = await Promise.all([
     db.weddings.toArray(),
     db.events.toArray(),
@@ -62,6 +64,7 @@ export async function exportDatabaseToJson(): Promise<string> {
     db.floorPlanElements.toArray(),
     db.tableSeatAssignments.toArray(),
     db.eInvites.toArray(),
+    db.familyRelations.toArray(),
   ]);
 
   const backup: BackupData = {
@@ -84,6 +87,7 @@ export async function exportDatabaseToJson(): Promise<string> {
     floorPlanElements,
     tableSeatAssignments,
     eInvites,
+    familyRelations,
   };
 
   return JSON.stringify(backup, null, 2);
@@ -139,6 +143,7 @@ export async function importDatabaseFromJson(jsonString: string): Promise<{ succ
       if (data.floorPlanElements?.length) await db.floorPlanElements.bulkAdd(data.floorPlanElements);
       if (data.tableSeatAssignments?.length) await db.tableSeatAssignments.bulkAdd(data.tableSeatAssignments);
       if (data.eInvites?.length) await db.eInvites.bulkAdd(data.eInvites);
+      if (data.familyRelations?.length) await db.familyRelations.bulkAdd(data.familyRelations);
     });
 
     return { success: true, message: `Successfully restored ${data.weddings.length} weddings and all related records.` };

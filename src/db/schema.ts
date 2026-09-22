@@ -231,8 +231,21 @@ export interface EInvite {
     secondary: string;
     background: string;
     text: string;
+    cardBg?: string;
+    borderColor?: string;
   };
+  backgroundTheme?: 'damask' | 'mandala' | 'floral' | 'imperial_gradient' | 'clean_linen' | 'none';
   rsvpPhone?: string;
   googleMapsUrl?: string;
   createdAt: number;
 }
+
+export interface FamilyRelationLink {
+  id: string;
+  weddingId: string;
+  fromMemberId: string;
+  toMemberId: string;
+  relationType: 'spouse' | 'parent_child' | 'sibling' | 'in_law' | 'cross_family' | 'custom';
+  label: string;
+}
+
