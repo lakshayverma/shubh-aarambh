@@ -1,23 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import { Wedding, EInvite, WeddingEvent, GuestParty } from '../../db/schema';
+import { Wedding, EInvite, WeddingEvent } from '../../db/schema';
 import { toPng } from 'html-to-image';
 import {
   Mail,
   Plus,
   Edit2,
   Trash2,
-  Download,
   Share2,
-  MessageCircle,
-  ExternalLink,
   Sparkles,
   MapPin,
   Calendar,
-  Clock,
-  Shirt,
-  Phone,
   Check,
   X,
   FileCode,
@@ -29,9 +23,9 @@ import {
   Compass,
   Palette,
   Eye,
-  Send,
   Sliders,
-  Maximize2,
+  ArrowLeft,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface EInvitesManagerProps {
@@ -47,7 +41,7 @@ export const COLOR_PALETTES = [
     primary: '#7B1113',
     secondary: '#D97706',
     background: '#FFFDF9',
-    cardBg: '#FFFFFF',
+    cardBg: '#FFFDF9',
     text: '#271E1D',
     borderColor: '#D97706',
   },
@@ -57,7 +51,7 @@ export const COLOR_PALETTES = [
     primary: '#0F766E',
     secondary: '#CA8A04',
     background: '#F0FDF4',
-    cardBg: '#FFFFFF',
+    cardBg: '#F8FCF9',
     text: '#134E4A',
     borderColor: '#CA8A04',
   },
@@ -65,9 +59,9 @@ export const COLOR_PALETTES = [
     id: 'saffron_marigold',
     name: 'Saffron Sunset',
     primary: '#C2410C',
-    secondary: '#EAB308',
+    secondary: '#EA580C',
     background: '#FFFBEB',
-    cardBg: '#FFFFFF',
+    cardBg: '#FFFEF8',
     text: '#431407',
     borderColor: '#EA580C',
   },
@@ -75,9 +69,9 @@ export const COLOR_PALETTES = [
     id: 'pastel_romance',
     name: 'Blush & Gold',
     primary: '#BE185D',
-    secondary: '#F59E0B',
+    secondary: '#D97706',
     background: '#FDF2F8',
-    cardBg: '#FFFFFF',
+    cardBg: '#FFF9FB',
     text: '#831843',
     borderColor: '#F472B6',
   },
@@ -85,7 +79,7 @@ export const COLOR_PALETTES = [
     id: 'midnight_sapphire',
     name: 'Midnight Sapphire',
     primary: '#1E3A8A',
-    secondary: '#F59E0B',
+    secondary: '#D97706',
     background: '#F8FAFC',
     cardBg: '#FFFFFF',
     text: '#0F172A',
@@ -103,46 +97,53 @@ export const COLOR_PALETTES = [
   },
 ];
 
-// Background Themes / Patterns
+// Background Themes / Patterns with enhanced contrast and repeating backgroundSize
 export const BACKGROUND_PATTERNS: {
   id: NonNullable<EInvite['backgroundTheme']>;
   name: string;
   css: (color: string) => string;
+  backgroundSize?: string;
 }[] = [
   {
     id: 'damask',
     name: 'Ornate Damask Arches',
     css: (color) =>
-      `radial-gradient(circle at 50% 50%, ${color}0D 10%, transparent 11%), radial-gradient(circle at 0% 0%, ${color}0D 10%, transparent 11%), radial-gradient(circle at 100% 100%, ${color}0D 10%, transparent 11%)`,
+      `radial-gradient(circle at 50% 50%, ${color}24 16%, transparent 17%), radial-gradient(circle at 0% 0%, ${color}1C 16%, transparent 17%), radial-gradient(circle at 100% 100%, ${color}1C 16%, transparent 17%)`,
+    backgroundSize: '40px 40px',
   },
   {
     id: 'mandala',
     name: 'Sacred Mandala Watermark',
     css: (color) =>
-      `radial-gradient(circle at center, ${color}12 0%, ${color}06 35%, transparent 70%)`,
+      `radial-gradient(circle at 50% 35%, ${color}2E 0%, ${color}1E 24%, ${color}0D 50%, transparent 75%)`,
+    backgroundSize: '100% 100%',
   },
   {
     id: 'floral',
     name: 'Mughal Trellis Vine',
     css: (color) =>
-      `repeating-linear-gradient(45deg, ${color}08 0px, ${color}08 2px, transparent 2px, transparent 16px), repeating-linear-gradient(-45deg, ${color}08 0px, ${color}08 2px, transparent 2px, transparent 16px)`,
+      `repeating-linear-gradient(45deg, ${color}20 0px, ${color}20 2px, transparent 2px, transparent 20px), repeating-linear-gradient(-45deg, ${color}20 0px, ${color}20 2px, transparent 2px, transparent 20px)`,
+    backgroundSize: '32px 32px',
   },
   {
     id: 'imperial_gradient',
     name: 'Imperial Radial Aura',
     css: (color) =>
-      `radial-gradient(circle at top right, ${color}18, transparent 65%), radial-gradient(circle at bottom left, ${color}15, transparent 65%)`,
+      `radial-gradient(circle at top right, ${color}35, transparent 65%), radial-gradient(circle at bottom left, ${color}2E, transparent 65%)`,
+    backgroundSize: '100% 100%',
   },
   {
     id: 'clean_linen',
     name: 'Clean Linen Minimal',
     css: (color) =>
-      `repeating-linear-gradient(0deg, ${color}05, ${color}05 1px, transparent 1px, transparent 8px)`,
+      `repeating-linear-gradient(0deg, ${color}1A, ${color}1A 1px, transparent 1px, transparent 12px), repeating-linear-gradient(90deg, ${color}1A, ${color}1A 1px, transparent 1px, transparent 12px)`,
+    backgroundSize: '24px 24px',
   },
   {
     id: 'none',
     name: 'Solid Pure Canvas',
     css: () => 'none',
+    backgroundSize: 'auto',
   },
 ];
 
@@ -240,20 +241,14 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     () => db.events.where('weddingId').equals(wedding.id).sortBy('orderIndex'),
     [wedding.id]
   );
-  const parties = useLiveQuery(
-    () => db.guestParties.where('weddingId').equals(wedding.id).toArray(),
-    [wedding.id]
-  );
 
+  // View state: 'designer' (3-column inline workbench) or 'list' (variants overview)
+  const [activeView, setActiveView] = useState<'designer' | 'list'>('designer');
   const [activeInviteId, setActiveInviteId] = useState<string>('');
-  const activeInvite = invites?.find((inv) => inv.id === activeInviteId) || invites?.[0];
+  const [editingInviteId, setEditingInviteId] = useState<string | null>(null);
 
-  // Modals
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingInvite, setEditingInvite] = useState<EInvite | null>(null);
-
-  // Form states
-  const [title, setTitle] = useState('All Functions Itinerary');
+  // Form states for Designer
+  const [title, setTitle] = useState('Whole Wedding Celebrations');
   const [slug, setSlug] = useState('celebration');
   const [inviteType, setInviteType] = useState<EInvite['inviteType']>('whole_wedding');
   const [templateId, setTemplateId] = useState<
@@ -271,12 +266,14 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
   const [themePrimary, setThemePrimary] = useState('#7B1113');
   const [themeSecondary, setThemeSecondary] = useState('#D97706');
   const [themeBackground, setThemeBackground] = useState('#FFFDF9');
-  const [themeCardBg, setThemeCardBg] = useState('#FFFFFF');
+  const [themeCardBg, setThemeCardBg] = useState('#FFFDF9');
   const [themeText, setThemeText] = useState('#271E1D');
   const [themeBorderColor, setThemeBorderColor] = useState('#D97706');
   const [backgroundTheme, setBackgroundTheme] = useState<
     NonNullable<EInvite['backgroundTheme']>
   >('damask');
+
+  const [isExportingPng, setIsExportingPng] = useState(false);
 
   // Card reference for PNG capture
   const cardRef = useRef<HTMLDivElement>(null);
@@ -284,68 +281,10 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
   const brideTerm = wedding.brideSideTerm || "Bride's Side (Ladkiwale)";
   const groomTerm = wedding.groomSideTerm || "Groom's Side (Ladkewale)";
 
-  // Auto-filter events based on invite type
-  const handleInviteTypeSelect = (newType: EInvite['inviteType']) => {
-    setInviteType(newType);
-    if (!events) return;
-
-    const allowedTypes = INVITE_TYPE_CONFIG[newType].defaultEventTypes;
-    const matchingEventIds = events
-      .filter((ev) => allowedTypes.includes(ev.type))
-      .map((ev) => ev.id);
-
-    setSelectedEventIds(matchingEventIds.length > 0 ? matchingEventIds : events.map((e) => e.id));
-
-    // Update title suggestion
-    if (!editingInvite) {
-      if (newType === 'whole_wedding') setTitle('Whole Wedding Celebrations');
-      else if (newType === 'ceremony_only') setTitle('Wedding Ceremony & Muhurat');
-      else if (newType === 'initial_events') setTitle('Pre-Wedding Celebrations (Mehendi & Sangeet)');
-      else if (newType === 'party_only') setTitle('Cocktail & Grand Reception');
-    }
-  };
-
-  const applyColorPalette = (palette: (typeof COLOR_PALETTES)[0]) => {
-    setThemePrimary(palette.primary);
-    setThemeSecondary(palette.secondary);
-    setThemeBackground(palette.background);
-    setThemeCardBg(palette.cardBg);
-    setThemeText(palette.text);
-    setThemeBorderColor(palette.borderColor);
-    setUseCustomTheme(true);
-  };
-
-  const openAddInvite = () => {
-    setEditingInvite(null);
-    setTitle('Whole Wedding Celebrations');
-    setSlug(`invite-${Date.now().toString().slice(-4)}`);
-    setInviteType('whole_wedding');
-    setTemplateId('royal_palace');
-    setSelectedEventIds(events?.map((e) => e.id) || []);
-    setCoverGreeting('Together with their families');
-    setHostFamilyNames(`${wedding.brideSideName} & ${wedding.groomSideName}`);
-    setCustomMessage(
-      `Request the pleasure of your company as ${wedding.brideName} & ${wedding.groomName} tie the sacred knot.`
-    );
-    setRsvpPhone('+91 98000 00000');
-    setGoogleMapsUrl(`https://maps.google.com/?q=${encodeURIComponent(wedding.venue + ' ' + wedding.city)}`);
-
-    // Reset color theme to default Rajputana
-    const defaultPal = COLOR_PALETTES[0];
-    setUseCustomTheme(false);
-    setThemePrimary(defaultPal.primary);
-    setThemeSecondary(defaultPal.secondary);
-    setThemeBackground(defaultPal.background);
-    setThemeCardBg(defaultPal.cardBg);
-    setThemeText(defaultPal.text);
-    setThemeBorderColor(defaultPal.borderColor);
-    setBackgroundTheme('damask');
-
-    setIsModalOpen(true);
-  };
-
-  const openEditInvite = (inv: EInvite) => {
-    setEditingInvite(inv);
+  // Load existing invite data into designer form
+  const loadInviteIntoForm = (inv: EInvite) => {
+    setEditingInviteId(inv.id);
+    setActiveInviteId(inv.id);
     setTitle(inv.title);
     setSlug(inv.slug);
     setInviteType(inv.inviteType || 'whole_wedding');
@@ -360,9 +299,12 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
           : 'regal_mandala')
     );
     setSelectedEventIds(inv.includedEventIds || []);
-    setCoverGreeting(inv.coverGreeting);
-    setHostFamilyNames(inv.hostFamilyNames);
-    setCustomMessage(inv.customMessage);
+    setCoverGreeting(inv.coverGreeting || 'Together with their families');
+    setHostFamilyNames(inv.hostFamilyNames || `${wedding.brideSideName} & ${wedding.groomSideName}`);
+    setCustomMessage(
+      inv.customMessage ||
+        `Request the pleasure of your company as ${wedding.brideName} & ${wedding.groomName} tie the sacred knot.`
+    );
     setRsvpPhone(inv.rsvpPhone || '');
     setGoogleMapsUrl(inv.googleMapsUrl || '');
 
@@ -371,7 +313,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       setThemePrimary(inv.themeColors.primary);
       setThemeSecondary(inv.themeColors.secondary);
       setThemeBackground(inv.themeColors.background);
-      setThemeCardBg(inv.themeColors.cardBg || '#FFFFFF');
+      setThemeCardBg(inv.themeColors.cardBg || '#FFFDF9');
       setThemeText(inv.themeColors.text);
       setThemeBorderColor(inv.themeColors.borderColor || inv.themeColors.secondary);
     } else {
@@ -386,19 +328,105 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     }
 
     setBackgroundTheme(inv.backgroundTheme || 'damask');
-    setIsModalOpen(true);
   };
 
-  const handleSaveInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !slug.trim()) return;
+  // Initialize or sync with active invite when loaded
+  useEffect(() => {
+    if (invites && invites.length > 0 && !editingInviteId && !activeInviteId) {
+      const first = invites[0];
+      loadInviteIntoForm(first);
+    } else if (events && selectedEventIds.length === 0 && !editingInviteId) {
+      setSelectedEventIds(events.map((e) => e.id));
+      setHostFamilyNames(`${wedding.brideSideName} & ${wedding.groomSideName}`);
+      setCustomMessage(
+        `Request the pleasure of your company as ${wedding.brideName} & ${wedding.groomName} tie the sacred knot.`
+      );
+      setGoogleMapsUrl(`https://maps.google.com/?q=${encodeURIComponent(wedding.venue + ' ' + wedding.city)}`);
+    }
+  }, [invites, events]);
+
+  // Auto-filter events based on invite type
+  const handleInviteTypeSelect = (newType: EInvite['inviteType']) => {
+    setInviteType(newType);
+    if (!events) return;
+
+    const allowedTypes = INVITE_TYPE_CONFIG[newType].defaultEventTypes;
+    const matchingEventIds = events
+      .filter((ev) => allowedTypes.includes(ev.type))
+      .map((ev) => ev.id);
+
+    setSelectedEventIds(matchingEventIds.length > 0 ? matchingEventIds : events.map((e) => e.id));
+
+    // Update title suggestion if default-like
+    if (!editingInviteId) {
+      if (newType === 'whole_wedding') {
+        setTitle('Whole Wedding Celebrations');
+        setSlug('whole-wedding');
+      } else if (newType === 'ceremony_only') {
+        setTitle('Wedding Ceremony & Muhurat');
+        setSlug('ceremony-only');
+      } else if (newType === 'initial_events') {
+        setTitle('Pre-Wedding Celebrations');
+        setSlug('pre-wedding');
+      } else if (newType === 'party_only') {
+        setTitle('Cocktail & Grand Reception');
+        setSlug('reception-party');
+      }
+    }
+  };
+
+  const applyColorPalette = (palette: (typeof COLOR_PALETTES)[0]) => {
+    setThemePrimary(palette.primary);
+    setThemeSecondary(palette.secondary);
+    setThemeBackground(palette.background);
+    setThemeCardBg(palette.cardBg);
+    setThemeText(palette.text);
+    setThemeBorderColor(palette.borderColor);
+    setUseCustomTheme(true);
+  };
+
+  const startNewInvite = () => {
+    setEditingInviteId(null);
+    setTitle('Whole Wedding Celebrations');
+    setSlug(`invite-${Date.now().toString().slice(-4)}`);
+    setInviteType('whole_wedding');
+    setTemplateId('royal_palace');
+    setSelectedEventIds(events?.map((e) => e.id) || []);
+    setCoverGreeting('Together with their families');
+    setHostFamilyNames(`${wedding.brideSideName} & ${wedding.groomSideName}`);
+    setCustomMessage(
+      `Request the pleasure of your company as ${wedding.brideName} & ${wedding.groomName} tie the sacred knot.`
+    );
+    setRsvpPhone('+91 98000 00000');
+    setGoogleMapsUrl(`https://maps.google.com/?q=${encodeURIComponent(wedding.venue + ' ' + wedding.city)}`);
+
+    const defaultPal = COLOR_PALETTES[0];
+    setUseCustomTheme(false);
+    setThemePrimary(defaultPal.primary);
+    setThemeSecondary(defaultPal.secondary);
+    setThemeBackground(defaultPal.background);
+    setThemeCardBg(defaultPal.cardBg);
+    setThemeText(defaultPal.text);
+    setThemeBorderColor(defaultPal.borderColor);
+    setBackgroundTheme('damask');
+
+    setActiveView('designer');
+  };
+
+  const handleSaveInvite = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!title.trim() || !slug.trim()) {
+      alert('Please provide a title and URL slug for this invite.');
+      return;
+    }
 
     const inviteRecord: EInvite = {
-      id: editingInvite ? editingInvite.id : `inv-${wedding.id}-${Date.now()}`,
+      id: editingInviteId || `inv-${wedding.id}-${Date.now()}`,
       weddingId: wedding.id,
       title: title.trim(),
       slug: slug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
       inviteType,
+      templateId,
       templateStyle:
         templateId === 'royal_palace'
           ? 'palace_arch'
@@ -407,7 +435,6 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
           : templateId === 'contemporary_ivory'
           ? 'modern_minimal'
           : 'royal_mandala',
-      templateId,
       includedEventIds: selectedEventIds,
       coverGreeting: coverGreeting.trim(),
       hostFamilyNames: hostFamilyNames.trim(),
@@ -425,64 +452,70 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       backgroundTheme,
       rsvpPhone: rsvpPhone.trim() || undefined,
       googleMapsUrl: googleMapsUrl.trim() || undefined,
-      createdAt: editingInvite ? editingInvite.createdAt : Date.now(),
+      createdAt: Date.now(),
     };
 
     await db.eInvites.put(inviteRecord);
+    setEditingInviteId(inviteRecord.id);
     setActiveInviteId(inviteRecord.id);
-    setIsModalOpen(false);
+    alert('E-Invite variant successfully saved!');
   };
 
   const handleDeleteInvite = async (id: string) => {
     if (confirm('Delete this e-invite variant?')) {
       await db.eInvites.delete(id);
+      if (editingInviteId === id) {
+        setEditingInviteId(null);
+        if (invites && invites.length > 1) {
+          const remaining = invites.filter((inv) => inv.id !== id);
+          loadInviteIntoForm(remaining[0]);
+        }
+      }
     }
   };
 
-  // Download High-Res PNG
+  // Download High-Res PNG without scrollbars or clipped content
   const handleDownloadPng = async () => {
     if (!cardRef.current) return;
     try {
-      const dataUrl = await toPng(cardRef.current, { quality: 0.95, pixelRatio: 2 });
+      setIsExportingPng(true);
+      // Wait a tick for react to remove max-h or scrollbars if any
+      await new Promise((res) => setTimeout(res, 80));
+
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 0.98,
+        pixelRatio: 2.5,
+        cacheBust: true,
+      });
+
       const link = document.createElement('a');
-      link.download = `${wedding.brideName}-${wedding.groomName}-${activeInvite?.slug || 'invite'}.png`;
+      link.download = `${wedding.brideName}-${wedding.groomName}-${slug || 'invite'}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
       alert('Failed to generate PNG image.');
+    } finally {
+      setIsExportingPng(false);
     }
   };
 
   // Export Standalone Interactive HTML package
   const handleExportHtml = () => {
-    if (!activeInvite) return;
-
-    const currentTemplate =
-      activeInvite.templateId ||
-      (activeInvite.templateStyle === 'floral_mughal'
-        ? 'mughal_floral'
-        : activeInvite.templateStyle === 'palace_arch'
-        ? 'royal_palace'
-        : activeInvite.templateStyle === 'modern_minimal'
-        ? 'contemporary_ivory'
-        : 'regal_mandala');
-
-    const defaultTmpl = TEMPLATE_CONFIG[currentTemplate];
+    const defaultTmpl = TEMPLATE_CONFIG[templateId];
     const colors = {
-      primary: activeInvite.themeColors?.primary || defaultTmpl.primaryText,
-      secondary: activeInvite.themeColors?.secondary || defaultTmpl.accentColor,
-      background: activeInvite.themeColors?.background || defaultTmpl.cardBg,
-      cardBg: activeInvite.themeColors?.cardBg || '#FFFFFF',
-      text: activeInvite.themeColors?.text || '#271E1D',
-      borderColor: activeInvite.themeColors?.borderColor || defaultTmpl.borderColor,
+      primary: useCustomTheme ? themePrimary : defaultTmpl.primaryText,
+      secondary: useCustomTheme ? themeSecondary : defaultTmpl.accentColor,
+      background: useCustomTheme ? themeBackground : defaultTmpl.cardBg,
+      cardBg: useCustomTheme ? themeCardBg : '#FFFDF9',
+      text: useCustomTheme ? themeText : '#271E1D',
+      borderColor: useCustomTheme ? themeBorderColor : defaultTmpl.borderColor,
     };
 
-    const patternObj = BACKGROUND_PATTERNS.find(
-      (p) => p.id === (activeInvite.backgroundTheme || 'damask')
-    ) || BACKGROUND_PATTERNS[0];
+    const patternObj =
+      BACKGROUND_PATTERNS.find((p) => p.id === backgroundTheme) || BACKGROUND_PATTERNS[0];
     const patternCss = patternObj.css(colors.secondary);
 
-    const includedEvents = events?.filter((ev) => activeInvite.includedEventIds.includes(ev.id)) || [];
+    const includedEvents = events?.filter((ev) => selectedEventIds.includes(ev.id)) || [];
 
     const eventsHtml = includedEvents
       .map(
@@ -503,15 +536,14 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${wedding.brideName} & ${wedding.groomName} — ${activeInvite.title}</title>
+  <title>${wedding.brideName} & ${wedding.groomName} — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
-      padding: 24px 12px;
+      padding: 32px 16px;
       font-family: 'Inter', sans-serif;
       background-color: ${colors.background};
-      background-image: ${patternCss};
       color: ${colors.text};
       display: flex;
       justify-content: center;
@@ -519,20 +551,22 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       min-height: 100vh;
     }
     .card {
-      max-width: 540px;
+      max-width: 560px;
       width: 100%;
       background: ${colors.cardBg};
-      border: 3px solid ${colors.borderColor};
+      background-image: ${patternCss};
+      background-size: ${patternObj.backgroundSize || 'auto'};
+      border: 4px solid ${colors.borderColor};
       border-radius: 28px;
-      padding: 36px 24px;
+      padding: 40px 28px;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.14);
       position: relative;
       box-sizing: border-box;
     }
     h1 {
       font-family: 'Playfair Display', serif;
-      font-size: 32px;
+      font-size: 34px;
       color: ${colors.primary};
       margin: 12px 0 6px;
     }
@@ -562,14 +596,14 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
 </head>
 <body>
   <div class="card">
-    <div class="greeting">${activeInvite.coverGreeting}</div>
+    <div class="greeting">${coverGreeting}</div>
     <h1>${wedding.brideName} &amp; ${wedding.groomName}</h1>
-    <div class="families">${activeInvite.hostFamilyNames}</div>
-    <div class="message">"${activeInvite.customMessage}"</div>
+    <div class="families">${hostFamilyNames}</div>
+    <div class="message">"${customMessage}"</div>
     <div class="events">${eventsHtml}</div>
     <div style="margin-top: 24px; font-size: 13px; color: #555;">
       <strong>Venue:</strong> ${wedding.venue}, ${wedding.city}<br>
-      ${activeInvite.rsvpPhone ? `<strong>RSVP:</strong> ${activeInvite.rsvpPhone}` : ''}
+      ${rsvpPhone ? `<strong>RSVP:</strong> ${rsvpPhone}` : ''}
     </div>
   </div>
 </body>
@@ -579,7 +613,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `${wedding.brideName}-${wedding.groomName}-${activeInvite.slug}.html`);
+    link.setAttribute('download', `${wedding.brideName}-${wedding.groomName}-${slug}.html`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -588,15 +622,13 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
 
   // WhatsApp Invite Text Generator
   const handleCopyWhatsApp = () => {
-    if (!activeInvite) return;
-
-    const includedEvents = events?.filter((ev) => activeInvite.includedEventIds.includes(ev.id)) || [];
+    const includedEvents = events?.filter((ev) => selectedEventIds.includes(ev.id)) || [];
 
     let msg = `🌸 *WEDDING INVITATION* 🌸\n\n`;
-    msg += `*${activeInvite.coverGreeting}*\n\n`;
+    msg += `*${coverGreeting}*\n\n`;
     msg += `✨ *${wedding.brideName} & ${wedding.groomName}* ✨\n`;
-    msg += `(${activeInvite.hostFamilyNames})\n\n`;
-    msg += `"${activeInvite.customMessage}"\n\n`;
+    msg += `(${hostFamilyNames})\n\n`;
+    msg += `"${customMessage}"\n\n`;
     msg += `🗓️ *CELEBRATIONS & ITINERARY:*\n`;
 
     for (const ev of includedEvents) {
@@ -607,45 +639,33 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     }
 
     msg += `\n🏛️ *Primary Venue:* ${wedding.venue}, ${wedding.city}\n`;
-    if (activeInvite.googleMapsUrl) msg += `🗺️ *Location Map:* ${activeInvite.googleMapsUrl}\n`;
-    if (activeInvite.rsvpPhone) msg += `📞 *RSVP Contact:* ${activeInvite.rsvpPhone}\n`;
+    if (googleMapsUrl) msg += `🗺️ *Location Map:* ${googleMapsUrl}\n`;
+    if (rsvpPhone) msg += `📞 *RSVP Contact:* ${rsvpPhone}\n`;
 
     navigator.clipboard.writeText(msg);
     alert('Invitation formatted text copied to clipboard! Ready to paste into WhatsApp.');
   };
 
-  // Active Template Config & Theme Customization Resolution
-  const currentTemplateId: 'royal_palace' | 'mughal_floral' | 'regal_mandala' | 'contemporary_ivory' =
-    activeInvite?.templateId ||
-    (activeInvite?.templateStyle === 'floral_mughal'
-      ? 'mughal_floral'
-      : activeInvite?.templateStyle === 'palace_arch'
-      ? 'royal_palace'
-      : activeInvite?.templateStyle === 'modern_minimal'
-      ? 'contemporary_ivory'
-      : 'regal_mandala');
+  // Current visual configurations for real-time live preview
+  const baseTemplateConfig = TEMPLATE_CONFIG[templateId] || TEMPLATE_CONFIG.royal_palace;
+  const activeTypeConfig = INVITE_TYPE_CONFIG[inviteType];
 
-  const baseTemplateConfig = TEMPLATE_CONFIG[currentTemplateId] || TEMPLATE_CONFIG.royal_palace;
-  const activeTypeConfig = INVITE_TYPE_CONFIG[activeInvite?.inviteType || 'whole_wedding'];
-
-  // Effective colors taking custom themeColors into account
   const effectiveTheme = {
-    primaryText: activeInvite?.themeColors?.primary || baseTemplateConfig.primaryText,
-    accentColor: activeInvite?.themeColors?.secondary || baseTemplateConfig.accentColor,
-    borderColor: activeInvite?.themeColors?.borderColor || baseTemplateConfig.borderColor,
-    cardBg: activeInvite?.themeColors?.cardBg || baseTemplateConfig.cardBg,
-    background: activeInvite?.themeColors?.background || '#F8FAFC',
-    text: activeInvite?.themeColors?.text || '#271E1D',
+    primaryText: useCustomTheme ? themePrimary : baseTemplateConfig.primaryText,
+    accentColor: useCustomTheme ? themeSecondary : baseTemplateConfig.accentColor,
+    borderColor: useCustomTheme ? themeBorderColor : baseTemplateConfig.borderColor,
+    cardBg: useCustomTheme ? themeCardBg : baseTemplateConfig.cardBg,
+    background: useCustomTheme ? themeBackground : '#F8FAFC',
+    text: useCustomTheme ? themeText : '#271E1D',
   };
 
-  const currentPattern = BACKGROUND_PATTERNS.find(
-    (p) => p.id === (activeInvite?.backgroundTheme || 'damask')
-  ) || BACKGROUND_PATTERNS[0];
+  const currentPattern =
+    BACKGROUND_PATTERNS.find((p) => p.id === backgroundTheme) || BACKGROUND_PATTERNS[0];
   const activePatternCss = currentPattern.css(effectiveTheme.accentColor);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Header Controls */}
+      {/* Top Header & View Navigation */}
       <div className="bg-theme-card border border-theme-border p-5 rounded-3xl shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -656,701 +676,143 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
               </h2>
             </div>
             <p className="text-xs text-theme-text-muted mt-1">
-              Pillar 7: 4 invite types &times; 4 royal design templates, pre-defined cultural palettes, custom color pickers & background themes.
+              Pillar 7: 3-column studio with real-time live preview, cohort ceremony grouping, cultural palettes, watermark themes, and unclipped PNG export.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={handleExportHtml}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-theme-border bg-theme-background hover:bg-theme-border/30 text-xs font-semibold text-theme-text-main transition-colors"
-              title="Export standalone HTML bundle"
-            >
-              <FileCode className="w-3.5 h-3.5 text-theme-primary" />
-              <span>Export HTML</span>
-            </button>
+            {/* View Switcher Tabs */}
+            <div className="flex items-center bg-theme-background border border-theme-border rounded-xl p-1">
+              <button
+                type="button"
+                onClick={() => setActiveView('designer')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeView === 'designer'
+                    ? 'bg-theme-card text-theme-primary shadow-xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                3-Col Studio
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('list')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeView === 'list'
+                    ? 'bg-theme-card text-theme-primary shadow-xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                All Variants ({invites?.length || 0})
+              </button>
+            </div>
 
             <button
-              onClick={handleDownloadPng}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-theme-border bg-theme-background hover:bg-theme-border/30 text-xs font-semibold text-theme-text-main transition-colors"
-              title="Download card as PNG image"
+              onClick={startNewInvite}
+              className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow hover:bg-theme-primary-hover transition-all"
             >
-              <ImageIcon className="w-3.5 h-3.5 text-theme-secondary" />
-              <span>Download PNG</span>
-            </button>
-
-            <button
-              onClick={handleCopyWhatsApp}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              <span>Copy WhatsApp</span>
-            </button>
-
-            <button
-              onClick={openAddInvite}
-              className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>New E-Invite Variant</span>
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>New Variant</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* EMBEDDED INVITE LIST & LIVE DESIGNER SPLIT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN (4 Cols): EMBEDDED INVITE LIST */}
-        <div className="lg:col-span-4 space-y-4">
-          <div className="bg-theme-card border border-theme-border rounded-3xl p-5 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-theme-border/60 pb-3">
-              <div>
-                <h3 className="font-serif font-bold text-sm text-theme-text-main flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-theme-primary" />
-                  <span>All E-Invites ({invites?.length || 0})</span>
-                </h3>
-                <p className="text-[11px] text-theme-text-muted mt-0.5">
-                  Click any invite to view preview & details.
-                </p>
-              </div>
-
-              <button
-                onClick={openAddInvite}
-                className="p-1.5 rounded-xl bg-theme-primary text-white hover:bg-theme-primary-hover transition-colors"
-                title="Create another invite combination"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* List of E-Invites */}
-            <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1">
-              {invites?.map((inv) => {
-                const isSelected = activeInvite?.id === inv.id;
-                const typeCfg = INVITE_TYPE_CONFIG[inv.inviteType || 'whole_wedding'];
-                const tmplId =
-                  inv.templateId ||
-                  (inv.templateStyle === 'floral_mughal'
-                    ? 'mughal_floral'
-                    : inv.templateStyle === 'palace_arch'
-                    ? 'royal_palace'
-                    : inv.templateStyle === 'modern_minimal'
-                    ? 'contemporary_ivory'
-                    : 'regal_mandala');
-                const tmplCfg = TEMPLATE_CONFIG[tmplId] || TEMPLATE_CONFIG.royal_palace;
-                const TmplIcon = tmplCfg.icon;
-
-                return (
-                  <div
-                    key={inv.id}
-                    onClick={() => setActiveInviteId(inv.id)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2.5 relative group ${
-                      isSelected
-                        ? 'border-theme-primary bg-theme-background/90 shadow-md ring-1 ring-theme-primary/20'
-                        : 'border-theme-border bg-theme-card hover:border-theme-primary/50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${typeCfg.badgeColor}`}
-                          >
-                            {typeCfg.label}
-                          </span>
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-theme-background border border-theme-border text-theme-text-muted">
-                            <TmplIcon className="w-2.5 h-2.5" />
-                            <span>{tmplCfg.name.split(' ')[0]}</span>
-                          </span>
-                        </div>
-
-                        <h4 className="font-serif font-bold text-sm text-theme-text-main leading-snug">
-                          {inv.title}
-                        </h4>
-                      </div>
-
-                      <div className="flex items-center gap-1 text-theme-text-muted opacity-80 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditInvite(inv);
-                          }}
-                          className="p-1 rounded-md hover:text-theme-primary hover:bg-theme-background"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteInvite(inv.id);
-                          }}
-                          className="p-1 rounded-md hover:text-rose-600 hover:bg-rose-50"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-theme-text-muted border-t border-theme-border/60 pt-2">
-                      <span>{inv.includedEventIds?.length || 0} Ceremonies Included</span>
-                      <span className="font-mono text-[10px] text-theme-primary">
-                        /{inv.slug}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {(!invites || invites.length === 0) && (
-                <div className="text-center py-8 text-theme-text-muted text-xs italic">
-                  No invite variants created yet.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* CENTER & RIGHT (8 Cols): LIVE INVITATION CARD PREVIEW */}
-        {activeInvite ? (
-          <div className="lg:col-span-8 flex flex-col items-center space-y-4">
-            {/* Template & Type Ribbon */}
-            <div className="w-full max-w-xl flex items-center justify-between text-xs bg-theme-card border border-theme-border px-4 py-2.5 rounded-2xl shadow-2xs">
+      {/* VIEW MODE A: 3-COLUMN INLINE DESIGNER STUDIO */}
+      {activeView === 'designer' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* ========================================================= */}
+          {/* COLUMN 1: DATA & CONTENT (Cohort, Ceremonies, Details)    */}
+          {/* ========================================================= */}
+          <div className="lg:col-span-4 space-y-5 bg-theme-card border border-theme-border p-5 rounded-3xl shadow-xs">
+            <div className="flex items-center justify-between border-b border-theme-border/70 pb-3">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-theme-text-main">{activeInvite.title}</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${activeTypeConfig.badgeColor}`}
-                >
-                  {activeTypeConfig.label}
+                <span className="w-6 h-6 rounded-full bg-theme-primary/10 text-theme-primary text-xs font-bold flex items-center justify-center">
+                  1
                 </span>
+                <h3 className="font-serif font-bold text-sm text-theme-text-main">
+                  Data & Ceremony Cohort
+                </h3>
               </div>
-              <span className="text-[11px] font-semibold text-theme-secondary">
-                Template: {baseTemplateConfig.name}
+              <span className="text-[10px] uppercase font-bold text-theme-text-muted">
+                Step 1 of 2
               </span>
             </div>
 
-            {/* Live Visual Invitation Card Container */}
-            <div
-              className="w-full max-w-xl p-4 sm:p-6 rounded-3xl border border-theme-border shadow-md"
-              style={{
-                backgroundColor: effectiveTheme.background,
-                backgroundImage: activePatternCss,
-              }}
-            >
-              <div
-                ref={cardRef}
-                className="w-full rounded-2xl p-6 sm:p-9 shadow-2xl text-center space-y-6 relative overflow-hidden transition-all border-4"
-                style={{
-                  backgroundColor: effectiveTheme.cardBg,
-                  borderColor: effectiveTheme.borderColor,
-                  minHeight: '640px',
-                }}
-              >
-                {/* Corner Ornaments */}
-                <div
-                  className="absolute top-2.5 left-2.5 w-8 h-8 border-t-2 border-l-2"
-                  style={{ borderColor: effectiveTheme.borderColor }}
-                />
-                <div
-                  className="absolute top-2.5 right-2.5 w-8 h-8 border-t-2 border-r-2"
-                  style={{ borderColor: effectiveTheme.borderColor }}
-                />
-                <div
-                  className="absolute bottom-2.5 left-2.5 w-8 h-8 border-b-2 border-l-2"
-                  style={{ borderColor: effectiveTheme.borderColor }}
-                />
-                <div
-                  className="absolute bottom-2.5 right-2.5 w-8 h-8 border-b-2 border-r-2"
-                  style={{ borderColor: effectiveTheme.borderColor }}
-                />
+            {/* 1.1 Cohort Audience / Invitation Type */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-theme-primary" />
+                <span>1. Invitation Cohort Audience</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(INVITE_TYPE_CONFIG) as Array<EInvite['inviteType']>).map((typeKey) => {
+                  const cfg = INVITE_TYPE_CONFIG[typeKey];
+                  const isSelected = inviteType === typeKey;
 
-                {/* Decorative Arch / Emblem */}
-                <div
-                  className="w-14 h-14 mx-auto rounded-full border flex items-center justify-center shadow-xs"
-                  style={{
-                    borderColor: effectiveTheme.borderColor,
-                    backgroundColor: `${effectiveTheme.borderColor}15`,
-                  }}
-                >
-                  {currentTemplateId === 'royal_palace' && (
-                    <Crown className="w-7 h-7" style={{ color: effectiveTheme.borderColor }} />
-                  )}
-                  {currentTemplateId === 'mughal_floral' && (
-                    <Flower2 className="w-7 h-7" style={{ color: effectiveTheme.borderColor }} />
-                  )}
-                  {currentTemplateId === 'regal_mandala' && (
-                    <Compass className="w-7 h-7" style={{ color: effectiveTheme.borderColor }} />
-                  )}
-                  {currentTemplateId === 'contemporary_ivory' && (
-                    <Sparkles className="w-7 h-7" style={{ color: effectiveTheme.borderColor }} />
-                  )}
-                </div>
-
-                {/* Greeting */}
-                <div className="space-y-1">
-                  <span
-                    className="text-[11px] uppercase tracking-widest font-bold block"
-                    style={{ color: effectiveTheme.accentColor }}
-                  >
-                    {activeInvite.coverGreeting}
-                  </span>
-                  <h1
-                    className="font-serif font-bold text-3xl sm:text-4xl tracking-tight"
-                    style={{ color: effectiveTheme.primaryText }}
-                  >
-                    {wedding.brideName} & {wedding.groomName}
-                  </h1>
-                  <p className="text-xs text-stone-600 font-medium">
-                    {activeInvite.hostFamilyNames}
-                  </p>
-                </div>
-
-                {/* Custom Inviting Message */}
-                <p
-                  className="text-xs sm:text-sm text-stone-700 italic max-w-md mx-auto leading-relaxed py-3 border-y"
-                  style={{ borderColor: `${effectiveTheme.borderColor}40` }}
-                >
-                  "{activeInvite.customMessage}"
-                </p>
-
-                {/* Selected Events Schedule */}
-                <div className="space-y-3 pt-2">
-                  <h3
-                    className="font-serif font-bold text-xs uppercase tracking-wider"
-                    style={{ color: effectiveTheme.primaryText }}
-                  >
-                    Celebrations Schedule ({activeTypeConfig.label})
-                  </h3>
-
-                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                    {events
-                      ?.filter((ev) => activeInvite.includedEventIds.includes(ev.id))
-                      .map((ev) => (
-                        <div
-                          key={ev.id}
-                          className="bg-white/85 border rounded-2xl p-3 text-left shadow-2xs space-y-1"
-                          style={{ borderColor: `${effectiveTheme.borderColor}30` }}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span
-                              className="font-bold text-xs"
-                              style={{ color: effectiveTheme.primaryText }}
-                            >
-                              {ev.name}
-                            </span>
-                            <span className="text-[10px] text-stone-500 font-medium">
-                              {ev.startTime} - {ev.endTime}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-stone-600 flex items-center gap-2">
-                            <Calendar className="w-3 h-3 text-amber-600" />
-                            <span>{ev.date}</span>
-                            <span>&bull;</span>
-                            <span className="truncate">{ev.venue}</span>
-                          </div>
-                          {ev.dressCode && (
-                            <div
-                              className="text-[10px] italic font-medium"
-                              style={{ color: effectiveTheme.accentColor }}
-                            >
-                              Dress Code: {ev.dressCode}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-
-                {/* Footer Details */}
-                <div
-                  className="pt-3 border-t space-y-2"
-                  style={{ borderColor: `${effectiveTheme.borderColor}40` }}
-                >
-                  <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-stone-800">
-                    <MapPin className="w-3.5 h-3.5 text-rose-700" />
-                    <span>
-                      {wedding.venue}, {wedding.city}
-                    </span>
-                  </div>
-                  {activeInvite.rsvpPhone && (
-                    <div className="text-[11px] text-stone-600">
-                      RSVP:{' '}
-                      <strong className="text-stone-900">{activeInvite.rsvpPhone}</strong>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="lg:col-span-8 bg-theme-card border-2 border-dashed border-theme-border rounded-3xl p-12 text-center space-y-3">
-            <Mail className="w-10 h-10 text-theme-text-muted mx-auto" />
-            <h3 className="font-serif font-bold text-base text-theme-text-main">
-              No E-Invite Selected
-            </h3>
-            <p className="text-xs text-theme-text-muted max-w-sm mx-auto">
-              Choose from 4 invite types and 4 templates to generate customized e-invites.
-            </p>
-            <button
-              onClick={openAddInvite}
-              className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-4 py-2 rounded-xl text-xs font-semibold shadow hover:bg-theme-primary-hover"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create First E-Invite</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Add / Edit Invite Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                {editingInvite ? 'Edit E-Invite Variant' : 'Create New E-Invite Combination'}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveInvite} className="p-6 space-y-4 overflow-y-auto flex-1">
-              {/* STEP 1: INVITE TYPE (4 Options) */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-theme-primary" />
-                  <span>1. Select Invitation Type (Cohort Audience)</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(
-                    Object.keys(INVITE_TYPE_CONFIG) as Array<EInvite['inviteType']>
-                  ).map((typeKey) => {
-                    const cfg = INVITE_TYPE_CONFIG[typeKey];
-                    const isSelected = inviteType === typeKey;
-
-                    return (
-                      <button
-                        type="button"
-                        key={typeKey}
-                        onClick={() => handleInviteTypeSelect(typeKey)}
-                        className={`p-3 rounded-2xl border text-left transition-all ${
-                          isSelected
-                            ? 'border-theme-primary bg-theme-primary-light/40 shadow-xs'
-                            : 'border-theme-border bg-theme-card hover:bg-theme-border/20'
-                        }`}
-                      >
-                        <div className="font-bold text-xs text-theme-text-main">{cfg.label}</div>
-                        <div className="text-[10px] text-theme-text-muted mt-0.5">
-                          {cfg.description}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* STEP 2: DESIGN TEMPLATE (4 Options) */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5 text-theme-secondary" />
-                  <span>2. Select Visual Design Template (4 Aesthetic Styles)</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(
-                    Object.keys(TEMPLATE_CONFIG) as Array<
-                      'royal_palace' | 'mughal_floral' | 'regal_mandala' | 'contemporary_ivory'
-                    >
-                  ).map((tmplKey) => {
-                    const cfg = TEMPLATE_CONFIG[tmplKey];
-                    const isSelected = templateId === tmplKey;
-                    const TmplIcon = cfg.icon;
-
-                    return (
-                      <button
-                        type="button"
-                        key={tmplKey}
-                        onClick={() => {
-                          setTemplateId(tmplKey);
-                          if (!useCustomTheme) {
-                            // Align defaults
-                            setThemePrimary(cfg.primaryText);
-                            setThemeSecondary(cfg.accentColor);
-                            setThemeBorderColor(cfg.borderColor);
-                            setThemeCardBg(cfg.cardBg);
-                          }
-                        }}
-                        className={`p-3 rounded-2xl border text-left transition-all ${
-                          isSelected
-                            ? 'border-theme-primary bg-theme-primary-light/40 shadow-xs'
-                            : 'border-theme-border bg-theme-card hover:bg-theme-border/20'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 font-bold text-xs text-theme-text-main">
-                          <TmplIcon className="w-3.5 h-3.5" style={{ color: cfg.accentColor }} />
-                          <span>{cfg.name}</span>
-                        </div>
-                        <div className="text-[10px] text-theme-text-muted mt-0.5 line-clamp-2">
-                          {cfg.description}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* STEP 3: COLOR THEME & PALETTES */}
-              <div className="space-y-3 p-3.5 rounded-2xl border border-theme-border bg-theme-background/60">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-theme-primary" />
-                    <span>3. Color Theme (Pre-defined Palettes or Custom Pickers)</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={useCustomTheme}
-                      onChange={(e) => setUseCustomTheme(e.target.checked)}
-                      className="rounded text-theme-primary focus:ring-theme-primary"
-                    />
-                    <span className="text-theme-text-muted text-[11px]">Enable Custom Colors</span>
-                  </label>
-                </div>
-
-                {/* Pre-defined Cultural Palettes */}
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider block">
-                    Quick Cultural Palettes
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {COLOR_PALETTES.map((pal) => (
-                      <button
-                        type="button"
-                        key={pal.id}
-                        onClick={() => applyColorPalette(pal)}
-                        className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                          useCustomTheme && themePrimary === pal.primary
-                            ? 'border-theme-primary bg-theme-card shadow-xs ring-1 ring-theme-primary/30'
-                            : 'border-theme-border bg-theme-card/60 hover:bg-theme-card'
-                        }`}
-                      >
-                        <div className="flex -space-x-1 shrink-0">
-                          <span
-                            className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
-                            style={{ backgroundColor: pal.primary }}
-                          />
-                          <span
-                            className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
-                            style={{ backgroundColor: pal.secondary }}
-                          />
-                          <span
-                            className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
-                            style={{ backgroundColor: pal.borderColor }}
-                          />
-                        </div>
-                        <span className="text-[11px] font-semibold text-theme-text-main truncate">
-                          {pal.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Granular Color Pickers (Visible when custom theme enabled) */}
-                {useCustomTheme && (
-                  <div className="pt-2 border-t border-theme-border/60 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-theme-text-muted block">
-                        Primary (Names/Headings)
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={themePrimary}
-                          onChange={(e) => setThemePrimary(e.target.value)}
-                          className="w-8 h-8 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
-                        />
-                        <input
-                          type="text"
-                          value={themePrimary}
-                          onChange={(e) => setThemePrimary(e.target.value)}
-                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-theme-text-muted block">
-                        Accent / Secondary
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={themeSecondary}
-                          onChange={(e) => setThemeSecondary(e.target.value)}
-                          className="w-8 h-8 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
-                        />
-                        <input
-                          type="text"
-                          value={themeSecondary}
-                          onChange={(e) => setThemeSecondary(e.target.value)}
-                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-theme-text-muted block">
-                        Outer Background
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={themeBackground}
-                          onChange={(e) => setThemeBackground(e.target.value)}
-                          className="w-8 h-8 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
-                        />
-                        <input
-                          type="text"
-                          value={themeBackground}
-                          onChange={(e) => setThemeBackground(e.target.value)}
-                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-theme-text-muted block">
-                        Card Border
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={themeBorderColor}
-                          onChange={(e) => setThemeBorderColor(e.target.value)}
-                          className="w-8 h-8 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
-                        />
-                        <input
-                          type="text"
-                          value={themeBorderColor}
-                          onChange={(e) => setThemeBorderColor(e.target.value)}
-                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* STEP 4: BACKGROUND PATTERN THEME */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>4. Background Watermark Pattern</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {BACKGROUND_PATTERNS.map((pat) => (
+                  return (
                     <button
                       type="button"
-                      key={pat.id}
-                      onClick={() => setBackgroundTheme(pat.id)}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
-                        backgroundTheme === pat.id
-                          ? 'border-theme-primary bg-theme-primary-light/40 font-bold text-theme-text-main shadow-xs'
-                          : 'border-theme-border bg-theme-card hover:bg-theme-border/20 text-theme-text-muted'
+                      key={typeKey}
+                      onClick={() => handleInviteTypeSelect(typeKey)}
+                      className={`p-2.5 rounded-2xl border text-left transition-all ${
+                        isSelected
+                          ? 'border-theme-primary bg-theme-primary-light/40 shadow-xs ring-1 ring-theme-primary/30'
+                          : 'border-theme-border bg-theme-background hover:bg-theme-border/20'
                       }`}
                     >
-                      {pat.name}
+                      <div className="font-bold text-xs text-theme-text-main flex items-center justify-between">
+                        <span>{cfg.label}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-theme-primary" />}
+                      </div>
+                      <div className="text-[10px] text-theme-text-muted mt-0.5 line-clamp-2">
+                        {cfg.description}
+                      </div>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Title / Label *</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Whole Wedding Celebrations"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">URL Slug *</label>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    placeholder="e.g. whole-wedding"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-mono"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Opening Greeting</label>
-                  <input
-                    type="text"
-                    value={coverGreeting}
-                    onChange={(e) => setCoverGreeting(e.target.value)}
-                    placeholder="e.g. Together with their families"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Host Families</label>
-                  <input
-                    type="text"
-                    value={hostFamilyNames}
-                    onChange={(e) => setHostFamilyNames(e.target.value)}
-                    placeholder={`${brideTerm} & ${groomTerm}`}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Custom Invitation Message</label>
-                <textarea
-                  value={customMessage}
-                  onChange={(e) => setCustomMessage(e.target.value)}
-                  placeholder="Request the honor of your presence..."
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm resize-none"
-                />
-              </div>
-
-              {/* Ceremony Inclusion Checkboxes */}
-              <div className="space-y-1.5 border-t border-theme-border/60 pt-3">
-                <label className="text-xs font-bold text-theme-text-main block">
-                  Included Ceremonies & Events
+            {/* 1.2 Included Ceremonies & Events (Placed directly below Cohort as requested) */}
+            <div className="space-y-2 p-3.5 rounded-2xl border border-theme-border bg-theme-background/60">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-theme-primary" />
+                  <span>2. Included Ceremonies & Events ({selectedEventIds.length})</span>
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {events?.map((ev) => {
-                    const isChecked = selectedEventIds.includes(ev.id);
-                    return (
-                      <label
-                        key={ev.id}
-                        className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
-                          isChecked
-                            ? 'border-theme-primary bg-theme-primary-light/40 font-bold'
-                            : 'border-theme-border bg-theme-background text-theme-text-muted'
-                        }`}
-                      >
+                <div className="flex items-center gap-2 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEventIds(events?.map((e) => e.id) || [])}
+                    className="text-theme-primary font-bold hover:underline"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-theme-text-muted">&bull;</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEventIds([])}
+                    className="text-theme-text-muted hover:text-theme-text-main"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                {events?.map((ev) => {
+                  const isChecked = selectedEventIds.includes(ev.id);
+                  return (
+                    <label
+                      key={ev.id}
+                      className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
+                        isChecked
+                          ? 'border-theme-primary bg-theme-card font-semibold text-theme-text-main'
+                          : 'border-theme-border/80 bg-theme-background/40 text-theme-text-muted'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -1364,52 +826,686 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
                           className="rounded text-theme-primary focus:ring-theme-primary"
                         />
                         <span className="truncate">{ev.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                      </div>
+                      <span className="text-[10px] text-theme-text-muted shrink-0 ml-1">
+                        {ev.date}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 1.3 Title & URL Slug */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-theme-text-main">Title / Label *</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Whole Wedding Celebrations"
+                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs"
+                  required
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">RSVP Contact Number</label>
-                  <input
-                    type="tel"
-                    value={rsvpPhone}
-                    onChange={(e) => setRsvpPhone(e.target.value)}
-                    placeholder="+91 98765 00000"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-theme-text-main">URL Slug *</label>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="e.g. whole-wedding"
+                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs font-mono"
+                  required
+                />
+              </div>
+            </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Google Maps Link</label>
-                  <input
-                    type="url"
-                    value={googleMapsUrl}
-                    onChange={(e) => setGoogleMapsUrl(e.target.value)}
-                    placeholder="https://maps.google.com/?q=..."
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
+            {/* 1.4 Greetings & Host Families */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-theme-text-main">Opening Greeting</label>
+                <input
+                  type="text"
+                  value={coverGreeting}
+                  onChange={(e) => setCoverGreeting(e.target.value)}
+                  placeholder="e.g. Together with their families"
+                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs"
+                />
               </div>
 
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-theme-text-main">Host Families</label>
+                <input
+                  type="text"
+                  value={hostFamilyNames}
+                  onChange={(e) => setHostFamilyNames(e.target.value)}
+                  placeholder={`${brideTerm} & ${groomTerm}`}
+                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs"
+                />
+              </div>
+            </div>
+
+            {/* 1.5 Custom Invitation Message */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Invitation Message</label>
+              <textarea
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                placeholder="Request the honor of your presence..."
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs resize-none"
+              />
+            </div>
+
+            {/* 1.6 RSVP & Maps Link */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-theme-text-main">RSVP Contact</label>
+                <input
+                  type="tel"
+                  value={rsvpPhone}
+                  onChange={(e) => setRsvpPhone(e.target.value)}
+                  placeholder="+91 98765 00000"
+                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-theme-text-main">Google Maps URL</label>
+                <input
+                  type="url"
+                  value={googleMapsUrl}
+                  onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                  placeholder="https://maps.google.com/?q=..."
+                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================= */}
+          {/* COLUMN 2: VISUALS & STYLING (Templates, Palettes, Patterns) */}
+          {/* ========================================================= */}
+          <div className="lg:col-span-4 space-y-5 bg-theme-card border border-theme-border p-5 rounded-3xl shadow-xs">
+            <div className="flex items-center justify-between border-b border-theme-border/70 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-theme-secondary/15 text-theme-secondary text-xs font-bold flex items-center justify-center">
+                  2
+                </span>
+                <h3 className="font-serif font-bold text-sm text-theme-text-main">
+                  Visual Theme & Aesthetics
+                </h3>
+              </div>
+              <span className="text-[10px] uppercase font-bold text-theme-text-muted">
+                Step 2 of 2
+              </span>
+            </div>
+
+            {/* 2.1 Design Template (4 Aesthetic Styles) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
+                <Palette className="w-3.5 h-3.5 text-theme-secondary" />
+                <span>1. Visual Design Template</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  Object.keys(TEMPLATE_CONFIG) as Array<
+                    'royal_palace' | 'mughal_floral' | 'regal_mandala' | 'contemporary_ivory'
+                  >
+                ).map((tmplKey) => {
+                  const cfg = TEMPLATE_CONFIG[tmplKey];
+                  const isSelected = templateId === tmplKey;
+                  const TmplIcon = cfg.icon;
+
+                  return (
+                    <button
+                      type="button"
+                      key={tmplKey}
+                      onClick={() => {
+                        setTemplateId(tmplKey);
+                        if (!useCustomTheme) {
+                          setThemePrimary(cfg.primaryText);
+                          setThemeSecondary(cfg.accentColor);
+                          setThemeBorderColor(cfg.borderColor);
+                          setThemeCardBg(cfg.cardBg);
+                        }
+                      }}
+                      className={`p-2.5 rounded-2xl border text-left transition-all ${
+                        isSelected
+                          ? 'border-theme-primary bg-theme-primary-light/40 shadow-xs ring-1 ring-theme-primary/30'
+                          : 'border-theme-border bg-theme-background hover:bg-theme-border/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-theme-text-main">
+                        <TmplIcon className="w-3.5 h-3.5" style={{ color: cfg.accentColor }} />
+                        <span className="truncate">{cfg.name}</span>
+                      </div>
+                      <div className="text-[10px] text-theme-text-muted mt-0.5 line-clamp-2">
+                        {cfg.description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2.2 Cultural Color Palettes */}
+            <div className="space-y-2.5 p-3.5 rounded-2xl border border-theme-border bg-theme-background/60">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-theme-primary" />
+                  <span>2. Cultural Color Palettes</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useCustomTheme}
+                    onChange={(e) => setUseCustomTheme(e.target.checked)}
+                    className="rounded text-theme-primary focus:ring-theme-primary"
+                  />
+                  <span className="text-theme-text-muted text-[11px]">Custom Mode</span>
+                </label>
+              </div>
+
+              {/* Pre-defined Cultural Palettes */}
+              <div className="grid grid-cols-2 gap-2">
+                {COLOR_PALETTES.map((pal) => (
+                  <button
+                    type="button"
+                    key={pal.id}
+                    onClick={() => applyColorPalette(pal)}
+                    className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                      useCustomTheme && themePrimary === pal.primary
+                        ? 'border-theme-primary bg-theme-card shadow-xs ring-1 ring-theme-primary/30'
+                        : 'border-theme-border bg-theme-card/60 hover:bg-theme-card'
+                    }`}
+                  >
+                    <div className="flex -space-x-1 shrink-0">
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
+                        style={{ backgroundColor: pal.primary }}
+                      />
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
+                        style={{ backgroundColor: pal.secondary }}
+                      />
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
+                        style={{ backgroundColor: pal.borderColor }}
+                      />
+                    </div>
+                    <span className="text-[11px] font-semibold text-theme-text-main truncate">
+                      {pal.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Granular Color Pickers (Visible when custom theme enabled) */}
+              {useCustomTheme && (
+                <div className="pt-2 border-t border-theme-border/60 grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-theme-text-muted block">
+                      Primary (Headings)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={themePrimary}
+                        onChange={(e) => setThemePrimary(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                      />
+                      <input
+                        type="text"
+                        value={themePrimary}
+                        onChange={(e) => setThemePrimary(e.target.value)}
+                        className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-theme-text-muted block">
+                      Accent / Gold
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={themeSecondary}
+                        onChange={(e) => setThemeSecondary(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                      />
+                      <input
+                        type="text"
+                        value={themeSecondary}
+                        onChange={(e) => setThemeSecondary(e.target.value)}
+                        className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-theme-text-muted block">
+                      Card Background
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={themeCardBg}
+                        onChange={(e) => setThemeCardBg(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                      />
+                      <input
+                        type="text"
+                        value={themeCardBg}
+                        onChange={(e) => setThemeCardBg(e.target.value)}
+                        className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-theme-text-muted block">
+                      Card Border
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={themeBorderColor}
+                        onChange={(e) => setThemeBorderColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                      />
+                      <input
+                        type="text"
+                        value={themeBorderColor}
+                        onChange={(e) => setThemeBorderColor(e.target.value)}
+                        className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 2.3 Background Watermark Pattern */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>3. Background Watermark Pattern</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {BACKGROUND_PATTERNS.map((pat) => (
+                  <button
+                    type="button"
+                    key={pat.id}
+                    onClick={() => setBackgroundTheme(pat.id)}
+                    className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
+                      backgroundTheme === pat.id
+                        ? 'border-theme-primary bg-theme-primary-light/40 font-bold text-theme-text-main shadow-xs ring-1 ring-theme-primary/30'
+                        : 'border-theme-border bg-theme-background hover:bg-theme-border/20 text-theme-text-muted'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="truncate">{pat.name}</span>
+                      {backgroundTheme === pat.id && (
+                        <Check className="w-3 h-3 text-theme-primary shrink-0" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Save & Reset Actions */}
+            <div className="pt-2 border-t border-theme-border flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveView('list')}
+                className="px-3.5 py-2 rounded-xl border border-theme-border bg-theme-background text-xs font-semibold text-theme-text-muted hover:text-theme-text-main"
+              >
+                Browse List
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveInvite()}
+                className="px-5 py-2.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow-md hover:bg-theme-primary-hover transition-all flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Save Invite Variant</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ========================================================= */}
+          {/* COLUMN 3: PERSISTENT LIVE PREVIEW & EXPORT ACTIONS        */}
+          {/* ========================================================= */}
+          <div className="lg:col-span-4 space-y-4 sticky top-6">
+            {/* Quick Export Action Bar */}
+            <div className="bg-theme-card border border-theme-border p-3 rounded-2xl shadow-2xs flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-theme-primary" />
+                <span>Live Card Preview</span>
+              </span>
+
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
+                  onClick={handleDownloadPng}
+                  disabled={isExportingPng}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-background hover:bg-theme-border/40 text-[11px] font-semibold text-theme-text-main transition-colors shadow-2xs"
+                  title="Download full unclipped PNG"
                 >
-                  Cancel
+                  <ImageIcon className="w-3 h-3 text-theme-secondary" />
+                  <span>{isExportingPng ? 'Rendering...' : 'PNG'}</span>
                 </button>
+
                 <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
+                  type="button"
+                  onClick={handleExportHtml}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-background hover:bg-theme-border/40 text-[11px] font-semibold text-theme-text-main transition-colors shadow-2xs"
+                  title="Export HTML standalone file"
                 >
-                  {editingInvite ? 'Save Changes' : 'Create E-Invite'}
+                  <FileCode className="w-3 h-3 text-theme-primary" />
+                  <span>HTML</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyWhatsApp}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold transition-colors shadow-2xs"
+                  title="Copy WhatsApp invitation text"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>WhatsApp</span>
                 </button>
               </div>
-            </form>
+            </div>
+
+            {/* Real-time Rendered Live Invitation Card */}
+            <div
+              className="p-3 sm:p-4 rounded-3xl border border-theme-border shadow-md"
+              style={{
+                backgroundColor: effectiveTheme.background,
+              }}
+            >
+              <div
+                ref={cardRef}
+                className="w-full rounded-2xl p-6 sm:p-7 shadow-xl text-center space-y-5 relative overflow-visible transition-all border-4"
+                style={{
+                  backgroundColor: effectiveTheme.cardBg,
+                  borderColor: effectiveTheme.borderColor,
+                  backgroundImage: activePatternCss,
+                  backgroundSize: currentPattern.backgroundSize || 'auto',
+                  minHeight: '520px',
+                }}
+              >
+                {/* Corner Ornaments */}
+                <div
+                  className="absolute top-2 left-2 w-7 h-7 border-t-2 border-l-2"
+                  style={{ borderColor: effectiveTheme.borderColor }}
+                />
+                <div
+                  className="absolute top-2 right-2 w-7 h-7 border-t-2 border-r-2"
+                  style={{ borderColor: effectiveTheme.borderColor }}
+                />
+                <div
+                  className="absolute bottom-2 left-2 w-7 h-7 border-b-2 border-l-2"
+                  style={{ borderColor: effectiveTheme.borderColor }}
+                />
+                <div
+                  className="absolute bottom-2 right-2 w-7 h-7 border-b-2 border-r-2"
+                  style={{ borderColor: effectiveTheme.borderColor }}
+                />
+
+                {/* Decorative Arch Emblem */}
+                <div
+                  className="w-12 h-12 mx-auto rounded-full border flex items-center justify-center shadow-xs"
+                  style={{
+                    borderColor: effectiveTheme.borderColor,
+                    backgroundColor: `${effectiveTheme.borderColor}15`,
+                  }}
+                >
+                  {templateId === 'royal_palace' && (
+                    <Crown className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
+                  )}
+                  {templateId === 'mughal_floral' && (
+                    <Flower2 className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
+                  )}
+                  {templateId === 'regal_mandala' && (
+                    <Compass className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
+                  )}
+                  {templateId === 'contemporary_ivory' && (
+                    <Sparkles className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
+                  )}
+                </div>
+
+                {/* Greeting & Couple Names */}
+                <div className="space-y-1">
+                  <span
+                    className="text-[10px] uppercase tracking-widest font-bold block"
+                    style={{ color: effectiveTheme.accentColor }}
+                  >
+                    {coverGreeting || 'Together with their families'}
+                  </span>
+                  <h1
+                    className="font-serif font-bold text-2xl sm:text-3xl tracking-tight"
+                    style={{ color: effectiveTheme.primaryText }}
+                  >
+                    {wedding.brideName} & {wedding.groomName}
+                  </h1>
+                  <p className="text-[11px] text-stone-600 font-medium">
+                    {hostFamilyNames || `${wedding.brideSideName} & ${wedding.groomSideName}`}
+                  </p>
+                </div>
+
+                {/* Custom Inviting Message */}
+                <p
+                  className="text-xs text-stone-700 italic max-w-sm mx-auto leading-relaxed py-2 border-y"
+                  style={{ borderColor: `${effectiveTheme.borderColor}40` }}
+                >
+                  "{customMessage}"
+                </p>
+
+                {/* Selected Events Schedule (Full height, unclipped) */}
+                <div className="space-y-2.5 pt-1">
+                  <h3
+                    className="font-serif font-bold text-[11px] uppercase tracking-wider"
+                    style={{ color: effectiveTheme.primaryText }}
+                  >
+                    Celebrations Schedule ({activeTypeConfig.label})
+                  </h3>
+
+                  <div className="space-y-2">
+                    {events
+                      ?.filter((ev) => selectedEventIds.includes(ev.id))
+                      .map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="bg-white/90 border rounded-xl p-2.5 text-left shadow-2xs space-y-0.5"
+                          style={{ borderColor: `${effectiveTheme.borderColor}30` }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className="font-bold text-xs"
+                              style={{ color: effectiveTheme.primaryText }}
+                            >
+                              {ev.name}
+                            </span>
+                            <span className="text-[10px] text-stone-500 font-medium">
+                              {ev.startTime} - {ev.endTime}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-stone-600 flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span>{ev.date}</span>
+                            <span>&bull;</span>
+                            <span className="truncate">{ev.venue}</span>
+                          </div>
+                          {ev.dressCode && (
+                            <div
+                              className="text-[9px] italic font-medium"
+                              style={{ color: effectiveTheme.accentColor }}
+                            >
+                              Dress Code: {ev.dressCode}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    {selectedEventIds.length === 0 && (
+                      <p className="text-[11px] text-stone-400 italic py-2">
+                        No ceremonies selected for this variant.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Details */}
+                <div
+                  className="pt-2 border-t space-y-1.5"
+                  style={{ borderColor: `${effectiveTheme.borderColor}40` }}
+                >
+                  <div className="flex items-center justify-center gap-1 text-[11px] font-semibold text-stone-800">
+                    <MapPin className="w-3 h-3 text-rose-700" />
+                    <span>
+                      {wedding.venue}, {wedding.city}
+                    </span>
+                  </div>
+                  {rsvpPhone && (
+                    <div className="text-[10px] text-stone-600">
+                      RSVP: <strong className="text-stone-900">{rsvpPhone}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW MODE B: ALL VARIANTS OVERVIEW LIST */}
+      {activeView === 'list' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-serif font-bold text-base text-theme-text-main">
+              Configured Invitation Variants ({invites?.length || 0})
+            </h3>
+            <button
+              onClick={startNewInvite}
+              className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow hover:bg-theme-primary-hover"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Another Variant</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {invites?.map((inv) => {
+              const typeCfg = INVITE_TYPE_CONFIG[inv.inviteType || 'whole_wedding'];
+              const currentTmpl =
+                inv.templateId ||
+                (inv.templateStyle === 'floral_mughal'
+                  ? 'mughal_floral'
+                  : inv.templateStyle === 'palace_arch'
+                  ? 'royal_palace'
+                  : inv.templateStyle === 'modern_minimal'
+                  ? 'contemporary_ivory'
+                  : 'regal_mandala');
+              const tmplCfg = TEMPLATE_CONFIG[currentTmpl] || TEMPLATE_CONFIG.royal_palace;
+              const TmplIcon = tmplCfg.icon;
+
+              return (
+                <div
+                  key={inv.id}
+                  className="bg-theme-card border border-theme-border rounded-2xl p-4 shadow-2xs hover:border-theme-primary transition-all space-y-3 flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${typeCfg.badgeColor}`}
+                      >
+                        {typeCfg.label}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-theme-background border border-theme-border text-theme-text-muted">
+                        <TmplIcon className="w-2.5 h-2.5" />
+                        <span>{tmplCfg.name.split(' ')[0]}</span>
+                      </span>
+                    </div>
+
+                    <h4 className="font-serif font-bold text-base text-theme-text-main">
+                      {inv.title}
+                    </h4>
+
+                    <p className="text-xs text-theme-text-muted line-clamp-2">
+                      "{inv.customMessage}"
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-theme-border/60">
+                    <div className="flex items-center justify-between text-[11px] text-theme-text-muted">
+                      <span>{inv.includedEventIds?.length || 0} Ceremonies</span>
+                      <span className="font-mono text-[10px] text-theme-primary">/{inv.slug}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          loadInviteIntoForm(inv);
+                          setActiveView('designer');
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-theme-primary hover:underline"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit in 3-Col Studio</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            loadInviteIntoForm(inv);
+                            setActiveView('designer');
+                            setTimeout(() => handleDownloadPng(), 200);
+                          }}
+                          className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-primary hover:bg-theme-background"
+                          title="Download PNG"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteInvite(inv.id)}
+                          className="p-1.5 rounded-lg text-theme-text-muted hover:text-rose-600 hover:bg-rose-50"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {(!invites || invites.length === 0) && (
+              <div className="col-span-full py-12 text-center bg-theme-card border-2 border-dashed border-theme-border rounded-3xl space-y-3">
+                <Mail className="w-10 h-10 text-theme-text-muted mx-auto" />
+                <h4 className="font-serif font-bold text-sm text-theme-text-main">
+                  No E-Invite Variants Yet
+                </h4>
+                <p className="text-xs text-theme-text-muted max-w-sm mx-auto">
+                  Create customized invitation variants for specific guest groups with their included ceremonies.
+                </p>
+                <button
+                  onClick={startNewInvite}
+                  className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-4 py-2 rounded-xl text-xs font-bold shadow hover:bg-theme-primary-hover"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create First Variant</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
