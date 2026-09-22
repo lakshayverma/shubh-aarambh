@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Wedding } from '../db/schema';
 import { useWedding } from '../context/WeddingContext';
 import { EventsTimeline } from './pillar1/EventsTimeline';
+import { FamilyManager } from './pillar2/FamilyManager';
+import { GuestListManager } from './pillar3/GuestListManager';
+import { AccommodationsManager } from './pillar4/AccommodationsManager';
+import { TravelManager } from './pillar5/TravelManager';
+import { SeatingChartsManager } from './pillar6/SeatingChartsManager';
+import { EInvitesManager } from './pillar7/EInvitesManager';
 import {
   Calendar,
   Clock,
@@ -14,20 +20,12 @@ import {
   Mail,
   Sparkles,
   ChevronLeft,
-  CheckCircle2,
   Tag,
 } from 'lucide-react';
 
 interface WeddingCommandCenterProps {
   wedding: Wedding;
   onOpenTagManager?: () => void;
-  // Sub-pillar managers will be wired up in later milestones
-  renderPillar2?: () => React.ReactNode;
-  renderPillar3?: () => React.ReactNode;
-  renderPillar4?: () => React.ReactNode;
-  renderPillar5?: () => React.ReactNode;
-  renderPillar6?: () => React.ReactNode;
-  renderPillar7?: () => React.ReactNode;
 }
 
 export type PillarId = 'dates' | 'family' | 'guests' | 'rooms' | 'travel' | 'seating' | 'invites';
@@ -35,12 +33,6 @@ export type PillarId = 'dates' | 'family' | 'guests' | 'rooms' | 'travel' | 'sea
 export const WeddingCommandCenter: React.FC<WeddingCommandCenterProps> = ({
   wedding,
   onOpenTagManager,
-  renderPillar2,
-  renderPillar3,
-  renderPillar4,
-  renderPillar5,
-  renderPillar6,
-  renderPillar7,
 }) => {
   const { setActiveWeddingId } = useWedding();
   const [activeTab, setActiveTab] = useState<PillarId>('dates');
@@ -76,19 +68,19 @@ export const WeddingCommandCenter: React.FC<WeddingCommandCenterProps> = ({
   }, [wedding.primaryDate]);
 
   const pillarsConfig = [
-    { id: 'dates', label: '1. Dates & Events', icon: Calendar, active: true },
-    { id: 'family', label: '2. Family Hierarchy', icon: Heart, active: Boolean(renderPillar2) },
-    { id: 'guests', label: '3. Guest List & RSVP', icon: Users, active: Boolean(renderPillar3) },
-    { id: 'rooms', label: '4. Accommodations', icon: Building, active: Boolean(renderPillar4) },
-    { id: 'travel', label: '5. Travel & Cabs', icon: Car, active: Boolean(renderPillar5) },
-    { id: 'seating', label: '6. Seating Charts', icon: Armchair, active: Boolean(renderPillar6) },
-    { id: 'invites', label: '7. E-Invites', icon: Mail, active: Boolean(renderPillar7) },
+    { id: 'dates', label: '1. Dates & Events', icon: Calendar },
+    { id: 'family', label: '2. Family Hierarchy', icon: Heart },
+    { id: 'guests', label: '3. Guest List & RSVP', icon: Users },
+    { id: 'rooms', label: '4. Accommodations', icon: Building },
+    { id: 'travel', label: '5. Travel & Cabs', icon: Car },
+    { id: 'seating', label: '6. Seating Charts', icon: Armchair },
+    { id: 'invites', label: '7. E-Invites', icon: Mail },
   ];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-200">
       
-      {/* Top back navigation */}
+      {/* Top back navigation & tag manager */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => setActiveWeddingId(null)}
@@ -203,48 +195,16 @@ export const WeddingCommandCenter: React.FC<WeddingCommandCenterProps> = ({
         })}
       </div>
 
-      {/* Pillar Content Views */}
+      {/* Pillar Content Views - All 7 Pillars Fully Connected */}
       <div className="pt-2">
         {activeTab === 'dates' && <EventsTimeline wedding={wedding} />}
-
-        {activeTab === 'family' && (renderPillar2 ? renderPillar2() : (
-          <PillarPlaceholder title="Pillar 2: Family Information" icon={Heart} description="Dual view with contact hierarchy cards and React Flow genealogical tree." />
-        ))}
-
-        {activeTab === 'guests' && (renderPillar3 ? renderPillar3() : (
-          <PillarPlaceholder title="Pillar 3: Guest List & RSVP" icon={Users} description="Family units, multi-event RSVP matrix, dietary preferences, and CSV import/export." />
-        ))}
-
-        {activeTab === 'rooms' && (renderPillar4 ? renderPillar4() : (
-          <PillarPlaceholder title="Pillar 4: Accommodations" icon={Building} description="Hotel floor room grid, occupancy badges, guest allocation, and front desk rooming list." />
-        ))}
-
-        {activeTab === 'travel' && (renderPillar5 ? renderPillar5() : (
-          <PillarPlaceholder title="Pillar 5: Travel & Vehicle Seating" icon={Car} description="Flight/train arrival tracker and pictorial vehicle seating chart with driver/passenger seats." />
-        ))}
-
-        {activeTab === 'seating' && (renderPillar6 ? renderPillar6() : (
-          <PillarPlaceholder title="Pillar 6: Seating Charts" icon={Armchair} description="Interactive 2D drag-and-drop floor plan designer with round tables, stage, mandap, and seats." />
-        ))}
-
-        {activeTab === 'invites' && (renderPillar7 ? renderPillar7() : (
-          <PillarPlaceholder title="Pillar 7: E-Invites & WhatsApp Links" icon={Mail} description="Festive card designer, multi-cohorts, standalone HTML/PNG export, and 1-click WhatsApp generator." />
-        ))}
+        {activeTab === 'family' && <FamilyManager wedding={wedding} onOpenTagManager={onOpenTagManager} />}
+        {activeTab === 'guests' && <GuestListManager wedding={wedding} onOpenTagManager={onOpenTagManager} />}
+        {activeTab === 'rooms' && <AccommodationsManager wedding={wedding} onOpenTagManager={onOpenTagManager} />}
+        {activeTab === 'travel' && <TravelManager wedding={wedding} onOpenTagManager={onOpenTagManager} />}
+        {activeTab === 'seating' && <SeatingChartsManager wedding={wedding} onOpenTagManager={onOpenTagManager} />}
+        {activeTab === 'invites' && <EInvitesManager wedding={wedding} onOpenTagManager={onOpenTagManager} />}
       </div>
     </div>
   );
 };
-
-const PillarPlaceholder: React.FC<{ title: string; icon: React.ComponentType<{ className?: string }>; description: string }> = ({
-  title,
-  icon: Icon,
-  description,
-}) => (
-  <div className="bg-theme-card border border-theme-border rounded-3xl p-12 text-center space-y-3">
-    <div className="w-12 h-12 rounded-2xl bg-theme-primary-light text-theme-primary mx-auto flex items-center justify-center">
-      <Icon className="w-6 h-6" />
-    </div>
-    <h3 className="font-serif font-bold text-lg text-theme-text-main">{title}</h3>
-    <p className="text-xs text-theme-text-muted max-w-md mx-auto">{description}</p>
-  </div>
-);
