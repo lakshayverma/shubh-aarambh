@@ -14,6 +14,8 @@ import {
   Position,
   Handle,
   MarkerType,
+  Connection,
+  ConnectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -77,9 +79,30 @@ const FamilyMemberNode: React.FC<{
           : 'border-amber-500 text-amber-950 shadow-amber-100'
       }`}
     >
-      <Handle type="target" position={Position.Top} className="!bg-theme-primary" />
-      <Handle type="target" id="target-left" position={Position.Left} className="!bg-theme-primary" />
-      <Handle type="source" id="source-left" position={Position.Left} className="!bg-theme-primary" />
+      <Handle
+        type="source"
+        id="handle-top-src"
+        position={Position.Top}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full hover:!scale-150 transition-all z-10"
+      />
+      <Handle
+        type="target"
+        id="handle-top-tgt"
+        position={Position.Top}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full hover:!scale-150 transition-all z-10"
+      />
+      <Handle
+        type="source"
+        id="source-left"
+        position={Position.Left}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full hover:!scale-150 transition-all z-10"
+      />
+      <Handle
+        type="target"
+        id="target-left"
+        position={Position.Left}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full hover:!scale-150 transition-all z-10"
+      />
 
       <div className="flex items-center justify-between gap-1 mb-1.5 flex-wrap">
         <span
@@ -142,9 +165,30 @@ const FamilyMemberNode: React.FC<{
         </div>
       )}
 
-      <Handle type="target" id="target-right" position={Position.Right} className="!bg-theme-primary" />
-      <Handle type="source" id="source-right" position={Position.Right} className="!bg-theme-primary" />
-      <Handle type="source" position={Position.Bottom} className="!bg-theme-primary" />
+      <Handle
+        type="source"
+        id="source-right"
+        position={Position.Right}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full hover:!scale-150 transition-all z-10"
+      />
+      <Handle
+        type="target"
+        id="target-right"
+        position={Position.Right}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full hover:!scale-150 transition-all z-10"
+      />
+      <Handle
+        type="source"
+        id="handle-bottom-src"
+        position={Position.Bottom}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full hover:!scale-150 transition-all z-10"
+      />
+      <Handle
+        type="target"
+        id="handle-bottom-tgt"
+        position={Position.Bottom}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full hover:!scale-150 transition-all z-10"
+      />
     </div>
   );
 };
@@ -183,12 +227,7 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
 
-  // Cross-group / Kinship Link Modal States
-  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
-  const [linkFromMemberId, setLinkFromMemberId] = useState('');
-  const [linkToMemberId, setLinkToMemberId] = useState('');
-  const [linkRelationType, setLinkRelationType] = useState<FamilyRelationLink['relationType']>('cross_family');
-  const [linkLabel, setLinkLabel] = useState('');
+
 
   // Form states
   const [name, setName] = useState('');
@@ -536,6 +575,82 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
       ? unifiedLadkiwale
       : unifiedLadkiwale.filter((m) => m.source === filterSource);
 
+  // Handle interactive connection drag-and-drop between nodes
+  const handleConnect = async (params: Connection) => {
+    if (!params.source || !params.target || params.source === params.target) return;
+
+    const allRelMap = new Map<string, UnifiedRelativeItem>();
+    for (const m of [...unifiedLadkewale, ...unifiedLadkiwale]) {
+      allRelMap.set(m.id, m);
+    }
+    const fromMember = allRelMap.get(params.source);
+    const toMember = allRelMap.get(params.target);
+    if (!fromMember || !toMember) return;
+
+    const isCrossSide = fromMember.side !== toMember.side;
+    let relType: FamilyRelationLink['relationType'] = isCrossSide ? 'cross_family' : 'custom';
+    let defaultLabel = isCrossSide ? 'Cross-Family Alliance' : 'Related';
+
+    if (fromMember.generationLevel === toMember.generationLevel) {
+      if (isCrossSide) {
+        relType = 'cross_family';
+        defaultLabel = 'Cross-Side Kin';
+      } else {
+        relType = 'sibling';
+        defaultLabel = 'Brother & Sister / Sibling';
+      }
+    } else if (Math.abs(fromMember.generationLevel - toMember.generationLevel) === 1) {
+      relType = 'parent_child';
+      defaultLabel = 'Parent & Child';
+    }
+
+    const promptLabel = window.prompt(
+      `Connect ${fromMember.name} and ${toMember.name}:\nEnter relation label (or press OK for "${defaultLabel}"):`,
+      defaultLabel
+    );
+
+    if (promptLabel === null) return; // user cancelled
+
+    const label = promptLabel.trim() || defaultLabel;
+
+    const newRelation: FamilyRelationLink = {
+      id: `rel-${Date.now()}`,
+      weddingId: wedding.id,
+      fromMemberId: params.source,
+      toMemberId: params.target,
+      relationType: relType,
+      label,
+    };
+
+    await db.familyRelations.put(newRelation);
+  };
+
+  // Handle clicking on an edge directly to edit label or delete
+  const handleEdgeClick = async (_event: React.MouseEvent, edge: Edge) => {
+    if (edge.id === 'edge-sacred-union') {
+      alert('💍 Sacred Vivah Union between the Groom and Bride.');
+      return;
+    }
+    if (!edge.id.startsWith('edge-rel-')) return;
+    const relId = edge.id.replace('edge-rel-', '');
+    const existing = customRelations?.find((r) => r.id === relId);
+    if (!existing) return;
+
+    const action = window.confirm(
+      `Relationship Connection: "${existing.label}"\n\nClick OK to update label, or Cancel to delete this connection.`
+    );
+    if (action) {
+      const newLabel = window.prompt('Enter updated relation label:', existing.label);
+      if (newLabel && newLabel.trim()) {
+        await db.familyRelations.update(existing.id, { label: newLabel.trim() });
+      }
+    } else {
+      if (window.confirm(`Delete connection "${existing.label}"?`)) {
+        await db.familyRelations.delete(existing.id);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Pillar Header */}
@@ -726,22 +841,10 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  const allRelativeList = [...unifiedLadkewale, ...unifiedLadkiwale];
-                  if (allRelativeList.length >= 2) {
-                    setLinkFromMemberId(allRelativeList[0].id);
-                    setLinkToMemberId(allRelativeList[1].id);
-                  }
-                  setLinkRelationType('cross_family');
-                  setLinkLabel('');
-                  setIsLinkModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
-              >
-                <Link2 className="w-3.5 h-3.5" />
-                <span>+ Link Relatives / Cross-Family</span>
-              </button>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-theme-primary/10 border border-theme-primary/30 rounded-xl text-theme-primary font-semibold text-xs">
+                <Sparkles className="w-3.5 h-3.5 text-theme-primary" />
+                <span>Interactive Linking: Drag between any circular handles to connect &bull; Click line to edit/delete</span>
+              </div>
             </div>
           </div>
 
@@ -796,6 +899,9 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
               nodes={flowNodes}
               edges={flowEdges}
               nodeTypes={nodeTypes}
+              onConnect={handleConnect}
+              onEdgeClick={handleEdgeClick}
+              connectionMode={ConnectionMode.Loose}
               fitView
               minZoom={0.15}
               maxZoom={1.5}
@@ -807,172 +913,6 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
                 style={{ height: 110, width: 150, borderRadius: 12 }}
               />
             </ReactFlow>
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit Relation Link Modal */}
-      {isLinkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Link2 className="w-5 h-5 text-theme-primary" />
-                <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                  Create Kinship / Cross-Family Link
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsLinkModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!linkFromMemberId || !linkToMemberId || linkFromMemberId === linkToMemberId) {
-                  alert('Please select two different relatives to link.');
-                  return;
-                }
-
-                const allRelMap = new Map<string, UnifiedRelativeItem>();
-                for (const m of [...unifiedLadkewale, ...unifiedLadkiwale]) {
-                  allRelMap.set(m.id, m);
-                }
-                const m1 = allRelMap.get(linkFromMemberId);
-                const m2 = allRelMap.get(linkToMemberId);
-
-                let defaultLabel = linkLabel.trim();
-                if (!defaultLabel) {
-                  if (linkRelationType === 'spouse') defaultLabel = 'Husband & Wife';
-                  else if (linkRelationType === 'cross_family') defaultLabel = 'Cross-Family Alliance';
-                  else if (linkRelationType === 'parent_child') defaultLabel = 'Parent & Child';
-                  else if (linkRelationType === 'sibling') defaultLabel = 'Brother & Sister / Siblings';
-                  else if (linkRelationType === 'in_law') defaultLabel = 'In-Law Connection';
-                  else defaultLabel = 'Related';
-                }
-
-                const newRel: FamilyRelationLink = {
-                  id: `rel-${Date.now()}`,
-                  weddingId: wedding.id,
-                  fromMemberId: linkFromMemberId,
-                  toMemberId: linkToMemberId,
-                  relationType: linkRelationType,
-                  label: defaultLabel,
-                };
-
-                await db.familyRelations.put(newRel);
-                setIsLinkModalOpen(false);
-              }}
-              className="p-6 space-y-4"
-            >
-              <p className="text-xs text-theme-text-muted">
-                Connect relatives within or across families (e.g. Samdhi-Samdhan, Spouses, In-Laws, or custom family bonds) to render visible kinship edges in the tree graph.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Person 1 *</label>
-                  <select
-                    value={linkFromMemberId}
-                    onChange={(e) => setLinkFromMemberId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  >
-                    <optgroup label={groomTerm}>
-                      {unifiedLadkewale.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.relation})
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label={brideTerm}>
-                      {unifiedLadkiwale.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.relation})
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Person 2 *</label>
-                  <select
-                    value={linkToMemberId}
-                    onChange={(e) => setLinkToMemberId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  >
-                    <optgroup label={brideTerm}>
-                      {unifiedLadkiwale.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.relation})
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label={groomTerm}>
-                      {unifiedLadkewale.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.relation})
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Relationship Type *</label>
-                  <select
-                    value={linkRelationType}
-                    onChange={(e) => setLinkRelationType(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  >
-                    <option value="cross_family">Cross-Family Alliance (Purple)</option>
-                    <option value="spouse">Spouse / Couple (Pink)</option>
-                    <option value="parent_child">Parent - Child Lineage (Green)</option>
-                    <option value="sibling">Siblings / Cousins (Blue)</option>
-                    <option value="in_law">In-Law Bond (Amber)</option>
-                    <option value="custom">Custom Relation (Indigo)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Edge Label / Description</label>
-                  <input
-                    type="text"
-                    value={linkLabel}
-                    onChange={(e) => setLinkLabel(e.target.value)}
-                    placeholder="e.g. Samdhi, Mami-Bhanja, Jija-Saali"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsLinkModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-                >
-                  Create Relation Link
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
