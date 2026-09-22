@@ -164,7 +164,7 @@ export interface Vehicle {
   id: string;
   weddingId: string;
   name: string; // e.g. "Innova Cresta 1", "Tempo Traveller A", "Groom's Brother Fortuner"
-  category: 'sedan_4' | 'suv_6' | 'suv_7' | 'tempo_12' | 'bus_30' | 'personal_car';
+  category: 'sedan_4' | 'sedan_5' | 'suv_6' | 'suv_7' | 'tempo_12' | 'van_14' | 'bus_30' | 'personal_car';
   plateNumber?: string;
   isPersonalVehicle: boolean;
   ownerGuestId?: string;

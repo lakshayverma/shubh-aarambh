@@ -364,13 +364,13 @@ export async function seedSampleWedding(): Promise<string> {
   ];
 
   const vehicleSeats: VehicleSeat[] = [
-    { id: 'seat-1-0', weddingId, vehicleId: 'veh-1', seatIndex: 0, seatRole: 'driver' },
-    { id: 'seat-1-1', weddingId, vehicleId: 'veh-1', seatIndex: 1, seatRole: 'co_driver', guestId: 'gst-1' },
-    { id: 'seat-1-2', weddingId, vehicleId: 'veh-1', seatIndex: 2, seatRole: 'passenger', guestId: 'gst-2' },
-    { id: 'seat-1-3', weddingId, vehicleId: 'veh-1', seatIndex: 3, seatRole: 'passenger', guestId: 'gst-3' },
-    { id: 'seat-2-0', weddingId, vehicleId: 'veh-2', seatIndex: 0, seatRole: 'driver', guestId: 'gst-6' },
-    { id: 'seat-2-1', weddingId, vehicleId: 'veh-2', seatIndex: 1, seatRole: 'co_driver', guestId: 'gst-7' },
-    { id: 'seat-2-2', weddingId, vehicleId: 'veh-2', seatIndex: 2, seatRole: 'passenger', guestId: 'gst-8' },
+    { id: 'seat-veh-1-0', weddingId, vehicleId: 'veh-1', seatIndex: 0, seatRole: 'driver' },
+    { id: 'seat-veh-1-1', weddingId, vehicleId: 'veh-1', seatIndex: 1, seatRole: 'co_driver', guestId: 'gst-1' },
+    { id: 'seat-veh-1-2', weddingId, vehicleId: 'veh-1', seatIndex: 2, seatRole: 'passenger', guestId: 'gst-2' },
+    { id: 'seat-veh-1-3', weddingId, vehicleId: 'veh-1', seatIndex: 3, seatRole: 'passenger', guestId: 'gst-3' },
+    { id: 'seat-veh-2-0', weddingId, vehicleId: 'veh-2', seatIndex: 0, seatRole: 'driver', guestId: 'gst-6' },
+    { id: 'seat-veh-2-1', weddingId, vehicleId: 'veh-2', seatIndex: 1, seatRole: 'co_driver', guestId: 'gst-7' },
+    { id: 'seat-veh-2-2', weddingId, vehicleId: 'veh-2', seatIndex: 2, seatRole: 'passenger', guestId: 'gst-8' },
   ];
 
   // Pillar 6: Seating Charts
