@@ -1,5 +1,14 @@
 // TypeScript models for all 7 pillars of Indian Wedding Management
 
+export interface WeddingCustomColors {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background?: string;
+  card?: string;
+  textMain?: string;
+}
+
 export interface Wedding {
   id: string;
   title: string;
@@ -7,6 +16,8 @@ export interface Wedding {
   groomName: string;
   brideSideName: string; // e.g. "Ladkiwale (Sharma Family)"
   groomSideName: string; // e.g. "Ladkewale (Verma Family)"
+  brideSideTerm?: string; // e.g. "Bride's Side", "Ladkiwale", "Team Ananya"
+  groomSideTerm?: string; // e.g. "Groom's Side", "Ladkewale", "Team Aarav"
   startDate: string;
   endDate: string;
   primaryDate: string; // Wedding day / Muhurat date
@@ -14,6 +25,7 @@ export interface Wedding {
   venue: string;
   coverImage?: string;
   theme: string;
+  customColors?: WeddingCustomColors;
   notes?: string;
   createdAt: number;
   updatedAt: number;
@@ -76,10 +88,15 @@ export interface Guest {
   partyId: string;
   weddingId: string;
   name: string;
-  ageCategory: 'adult' | 'child';
+  ageCategory: 'adult' | 'child' | 'infant' | 'elder';
   dietaryPreference: 'pure_veg' | 'jain' | 'non_veg' | 'vegan';
+  isPrimaryContact?: boolean;
+  relationToBride?: string;
+  relationToGroom?: string;
+  generationLevel?: number; // 1: Grandparent/Elder, 2: Parents/Uncles, 3: Couple/Siblings/Cousins, 4: Kids
+  tagIds?: string[];
   allergies?: string;
-  specialAssistance?: string; // e.g. "Wheelchair", "Ground Floor", "Elderly"
+  specialAssistance?: string; // e.g. "Wheelchair", "Ground Floor", "Elderly Care"
 }
 
 export interface EventRsvp {
@@ -153,6 +170,9 @@ export interface Vehicle {
   ownerGuestId?: string;
   driverName?: string;
   driverPhone?: string;
+  driveSide?: 'RHD' | 'LHD'; // RHD (Right Hand Drive - India/UK/Aus) vs LHD (Left Hand Drive - US/Canada)
+  luggageCapacityBags?: number;
+  countryPreset?: string;
   status: 'scheduled' | 'dispatched' | 'completed';
 }
 
@@ -199,7 +219,9 @@ export interface EInvite {
   weddingId: string;
   title: string;
   slug: string;
+  inviteType: 'whole_wedding' | 'ceremony_only' | 'initial_events' | 'party_only';
   templateStyle: 'royal_mandala' | 'modern_minimal' | 'floral_mughal' | 'palace_arch';
+  templateId?: 'royal_palace' | 'mughal_floral' | 'regal_mandala' | 'contemporary_ivory';
   includedEventIds: string[];
   coverGreeting: string;
   hostFamilyNames: string;

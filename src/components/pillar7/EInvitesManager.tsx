@@ -104,6 +104,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       weddingId: wedding.id,
       title: title.trim(),
       slug: slug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
+      inviteType: editingInvite ? editingInvite.inviteType : 'whole_wedding',
       templateStyle,
       includedEventIds: selectedEventIds,
       coverGreeting: coverGreeting.trim(),

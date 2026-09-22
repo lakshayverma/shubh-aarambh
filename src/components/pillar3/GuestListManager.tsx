@@ -71,7 +71,7 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
   // Individual guests list for the party in modal
   const [modalGuests, setModalGuests] = useState<
-    { name: string; ageCategory: 'adult' | 'child'; dietaryPreference: 'pure_veg' | 'jain' | 'non_veg' | 'vegan'; specialAssistance?: string }[]
+    { name: string; ageCategory: 'adult' | 'child' | 'infant' | 'elder'; dietaryPreference: 'pure_veg' | 'jain' | 'non_veg' | 'vegan'; specialAssistance?: string }[]
   >([]);
 
   // CSV file ref

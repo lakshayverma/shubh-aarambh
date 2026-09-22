@@ -46,14 +46,24 @@ export async function seedSampleWedding(): Promise<string> {
     title: 'Aarav & Ananya — The Royal Udaipur Vivah',
     brideName: 'Ananya Sharma',
     groomName: 'Aarav Verma',
-    brideSideName: 'Ladkiwale (Sharma Pariwaar)',
-    groomSideName: 'Ladkewale (Verma Pariwaar)',
+    brideSideName: 'Sharma Pariwaar',
+    groomSideName: 'Verma Pariwaar',
+    brideSideTerm: 'Bride’s Side (Ladkiwale)',
+    groomSideTerm: 'Groom’s Side (Ladkewale)',
     startDate: date1,
     endDate: date3,
     primaryDate: date2,
     city: 'Udaipur, Rajasthan',
     venue: 'The Leela Palace Udaipur',
     theme: 'royal-festive',
+    customColors: {
+      primary: '#7B1113',
+      secondary: '#D97706',
+      accent: '#B45309',
+      background: '#FCFBF7',
+      card: '#FFFFFF',
+      textMain: '#271E1D',
+    },
     notes: 'Destination wedding with 250 guests across 3 days of grand celebrations.',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -268,14 +278,15 @@ export async function seedSampleWedding(): Promise<string> {
   ];
 
   const guests: Guest[] = [
-    { id: 'gst-1', partyId: 'pty-malhotra', weddingId, name: 'Vikram Malhotra', ageCategory: 'adult', dietaryPreference: 'pure_veg' },
-    { id: 'gst-2', partyId: 'pty-malhotra', weddingId, name: 'Pooja Malhotra', ageCategory: 'adult', dietaryPreference: 'pure_veg' },
-    { id: 'gst-3', partyId: 'pty-malhotra', weddingId, name: 'Aarush Malhotra', ageCategory: 'child', dietaryPreference: 'pure_veg' },
-    { id: 'gst-4', partyId: 'pty-gupta', weddingId, name: 'Dr. Alok Gupta', ageCategory: 'adult', dietaryPreference: 'jain', specialAssistance: 'Ground floor room' },
-    { id: 'gst-5', partyId: 'pty-gupta', weddingId, name: 'Neelam Gupta', ageCategory: 'adult', dietaryPreference: 'jain' },
-    { id: 'gst-6', partyId: 'pty-kapoor', weddingId, name: 'Rohan Kapoor', ageCategory: 'adult', dietaryPreference: 'non_veg' },
-    { id: 'gst-7', partyId: 'pty-kapoor', weddingId, name: 'Sameer Sen', ageCategory: 'adult', dietaryPreference: 'pure_veg' },
-    { id: 'gst-8', partyId: 'pty-kapoor', weddingId, name: 'Tanvi Mehra', ageCategory: 'adult', dietaryPreference: 'vegan' },
+    { id: 'gst-1', partyId: 'pty-malhotra', weddingId, name: 'Vikram Malhotra', ageCategory: 'adult', dietaryPreference: 'pure_veg', isPrimaryContact: true, relationToGroom: 'Uncle (Chacha)', generationLevel: 2 },
+    { id: 'gst-2', partyId: 'pty-malhotra', weddingId, name: 'Pooja Malhotra', ageCategory: 'adult', dietaryPreference: 'pure_veg', relationToGroom: 'Aunt (Chachi)', generationLevel: 2 },
+    { id: 'gst-3', partyId: 'pty-malhotra', weddingId, name: 'Aarush Malhotra', ageCategory: 'child', dietaryPreference: 'pure_veg', relationToGroom: 'Cousin', generationLevel: 3 },
+    { id: 'gst-4', partyId: 'pty-gupta', weddingId, name: 'Dr. Alok Gupta', ageCategory: 'elder', dietaryPreference: 'jain', isPrimaryContact: true, relationToBride: 'Grandfather / Nana', generationLevel: 1, specialAssistance: 'Ground floor room' },
+    { id: 'gst-5', partyId: 'pty-gupta', weddingId, name: 'Neelam Gupta', ageCategory: 'elder', dietaryPreference: 'jain', relationToBride: 'Grandmother / Nani', generationLevel: 1 },
+    { id: 'gst-6', partyId: 'pty-kapoor', weddingId, name: 'Rohan Kapoor', ageCategory: 'adult', dietaryPreference: 'non_veg', isPrimaryContact: true, relationToGroom: 'Best Friend', generationLevel: 3 },
+    { id: 'gst-7', partyId: 'pty-kapoor', weddingId, name: 'Sameer Sen', ageCategory: 'adult', dietaryPreference: 'pure_veg', relationToGroom: 'College Friend', generationLevel: 3 },
+    { id: 'gst-8', partyId: 'pty-kapoor', weddingId, name: 'Tanvi Mehra', ageCategory: 'adult', dietaryPreference: 'vegan', relationToBride: 'School Friend', generationLevel: 3 },
+    { id: 'gst-9', partyId: 'pty-malhotra', weddingId, name: 'Baby Malhotra', ageCategory: 'infant', dietaryPreference: 'pure_veg', relationToGroom: 'Baby Niece', generationLevel: 4 },
   ];
 
   const eventRsvps: EventRsvp[] = [
@@ -321,8 +332,35 @@ export async function seedSampleWedding(): Promise<string> {
   ];
 
   const vehicles: Vehicle[] = [
-    { id: 'veh-1', weddingId, name: 'Innova Crysta 1 (Airport Shuttle)', category: 'suv_7', plateNumber: 'RJ 27 TA 1102', isPersonalVehicle: false, driverName: 'Mukesh Singh', driverPhone: '+91 94140 33441', status: 'scheduled' },
-    { id: 'veh-2', weddingId, name: 'Rohan’s Fortuner (Personal Car)', category: 'suv_7', plateNumber: 'DL 3C AB 9090', isPersonalVehicle: true, ownerGuestId: 'gst-6', driverName: 'Rohan Kapoor', driverPhone: '+91 98765 43212', status: 'scheduled' },
+    {
+      id: 'veh-1',
+      weddingId,
+      name: 'Innova Crysta 1 (Airport Shuttle)',
+      category: 'suv_7',
+      plateNumber: 'RJ 27 TA 1102',
+      isPersonalVehicle: false,
+      driverName: 'Mukesh Singh',
+      driverPhone: '+91 94140 33441',
+      driveSide: 'RHD',
+      luggageCapacityBags: 4,
+      countryPreset: 'India',
+      status: 'scheduled',
+    },
+    {
+      id: 'veh-2',
+      weddingId,
+      name: 'Rohan’s Fortuner (Personal Car)',
+      category: 'suv_7',
+      plateNumber: 'DL 3C AB 9090',
+      isPersonalVehicle: true,
+      ownerGuestId: 'gst-6',
+      driverName: 'Rohan Kapoor',
+      driverPhone: '+91 98765 43212',
+      driveSide: 'RHD',
+      luggageCapacityBags: 5,
+      countryPreset: 'India',
+      status: 'scheduled',
+    },
   ];
 
   const vehicleSeats: VehicleSeat[] = [
@@ -360,27 +398,97 @@ export async function seedSampleWedding(): Promise<string> {
     { id: 'ts-4', elementId: 'elem-tbl-2', seatNumber: 2, guestId: 'gst-5' },
   ];
 
-  // Pillar 7: E-Invite
-  const eInvite: EInvite = {
-    id: 'inv-aarav-ananya-full',
-    weddingId,
-    title: 'Grand Celebrations — All Functions Itinerary',
-    slug: 'aarav-ananya-royal-vivah',
-    templateStyle: 'royal_mandala',
-    includedEventIds: ['evt-mehendi', 'evt-sangeet', 'evt-haldi', 'evt-wedding', 'evt-reception'],
-    coverGreeting: 'Together with their families',
-    hostFamilyNames: 'The Sharma & Verma Families',
-    customMessage: 'Request the honor of your gracious presence as Aarav & Ananya unite in holy matrimony amidst the serene lakes of Udaipur.',
-    themeColors: {
-      primary: '#7B1113',
-      secondary: '#D97706',
-      background: '#FCFBF7',
-      text: '#271E1D',
+  // Pillar 7: E-Invites (4 types)
+  const sampleEInvites: EInvite[] = [
+    {
+      id: 'inv-aarav-ananya-full',
+      weddingId,
+      title: 'Grand Celebrations — All Functions Itinerary',
+      slug: 'aarav-ananya-royal-vivah',
+      inviteType: 'whole_wedding',
+      templateStyle: 'royal_mandala',
+      templateId: 'royal_palace',
+      includedEventIds: ['evt-mehendi', 'evt-sangeet', 'evt-haldi', 'evt-wedding', 'evt-reception'],
+      coverGreeting: 'Together with their families',
+      hostFamilyNames: 'The Sharma & Verma Families',
+      customMessage: 'Request the honor of your gracious presence as Aarav & Ananya unite in holy matrimony amidst the serene lakes of Udaipur.',
+      themeColors: {
+        primary: '#7B1113',
+        secondary: '#D97706',
+        background: '#FCFBF7',
+        text: '#271E1D',
+      },
+      rsvpPhone: '+91 98100 11223',
+      googleMapsUrl: 'https://maps.google.com/?q=The+Leela+Palace+Udaipur',
+      createdAt: Date.now(),
     },
-    rsvpPhone: '+91 98100 11223',
-    googleMapsUrl: 'https://maps.google.com/?q=The+Leela+Palace+Udaipur',
-    createdAt: Date.now(),
-  };
+    {
+      id: 'inv-aarav-ananya-ceremony',
+      weddingId,
+      title: 'Shubh Vivah Ceremony — Auspicious Pheras',
+      slug: 'aarav-ananya-pheras',
+      inviteType: 'ceremony_only',
+      templateStyle: 'palace_arch',
+      templateId: 'regal_mandala',
+      includedEventIds: ['evt-wedding'],
+      coverGreeting: 'With the blessings of our elders',
+      hostFamilyNames: 'The Sharma & Verma Families',
+      customMessage: 'Cordially invite you to witness the sacred nuptials and Vedic pheras of Aarav & Ananya.',
+      themeColors: {
+        primary: '#9A3412',
+        secondary: '#D97706',
+        background: '#FFFDF9',
+        text: '#382116',
+      },
+      rsvpPhone: '+91 98100 11223',
+      googleMapsUrl: 'https://maps.google.com/?q=The+Leela+Palace+Udaipur',
+      createdAt: Date.now() + 1,
+    },
+    {
+      id: 'inv-aarav-ananya-initial',
+      weddingId,
+      title: 'Pre-Wedding Celebrations — Mehendi & Sangeet',
+      slug: 'aarav-ananya-sangeet-mehendi',
+      inviteType: 'initial_events',
+      templateStyle: 'floral_mughal',
+      templateId: 'mughal_floral',
+      includedEventIds: ['evt-mehendi', 'evt-sangeet', 'evt-haldi'],
+      coverGreeting: 'Join us for music, joy & colors',
+      hostFamilyNames: 'The Sharma & Verma Families',
+      customMessage: 'Get ready for dhol beats, vibrant mehendi, and energetic dance performances!',
+      themeColors: {
+        primary: '#0F766E',
+        secondary: '#CA8A04',
+        background: '#F4FBFB',
+        text: '#132D2B',
+      },
+      rsvpPhone: '+91 98100 11223',
+      googleMapsUrl: 'https://maps.google.com/?q=The+Leela+Palace+Udaipur',
+      createdAt: Date.now() + 2,
+    },
+    {
+      id: 'inv-aarav-ananya-party',
+      weddingId,
+      title: 'Grand Reception Gala & Cocktails',
+      slug: 'aarav-ananya-reception',
+      inviteType: 'party_only',
+      templateStyle: 'modern_minimal',
+      templateId: 'contemporary_ivory',
+      includedEventIds: ['evt-reception'],
+      coverGreeting: 'Celebrate the Newlyweds',
+      hostFamilyNames: 'The Sharma & Verma Families',
+      customMessage: 'Join us for an evening of celebratory cocktails, multi-course feast, and dancing.',
+      themeColors: {
+        primary: '#1E293B',
+        secondary: '#4F46E5',
+        background: '#F8FAFC',
+        text: '#0F172A',
+      },
+      rsvpPhone: '+91 98100 11223',
+      googleMapsUrl: 'https://maps.google.com/?q=The+Leela+Palace+Udaipur',
+      createdAt: Date.now() + 3,
+    },
+  ];
 
   // Bulk add to IndexedDB
   await db.transaction('rw', db.tables, async () => {
@@ -400,7 +508,7 @@ export async function seedSampleWedding(): Promise<string> {
     await db.seatingPlans.put(seatingPlan);
     await db.floorPlanElements.bulkPut(floorPlanElements);
     await db.tableSeatAssignments.bulkPut(tableSeatAssignments);
-    await db.eInvites.put(eInvite);
+    await db.eInvites.bulkPut(sampleEInvites);
   });
 
   return weddingId;
