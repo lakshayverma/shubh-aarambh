@@ -25,8 +25,10 @@ Crucially, **Pillar 2 is merged with Pillar 3 (Guest List)**: any guest designat
      - **Gen 3**: Couple, Siblings, Cousins & Peers (*Bride, Groom, Brother, Sister, Cousin*)
      - **Gen 4 (Bottom)**: Children & Grandchildren
    - **Automatic Hierarchical Edges**: Generates generational parent-child lineage connections within each family wing, plus a central animated golden bond (`💍 Sacred Vivah Union 💍`) connecting the Groom and Bride wings.
-   - **Cross-Family & Kinship Relation Builder (`+ Link Relatives / Cross-Family`)**:
-     - Connects any two relatives across or within families (e.g. *Samdhi-Samdhan*, *Husband & Wife*, *In-Laws*, *Cousins*).
+   - **Interactive Canvas Drag-and-Drop Linking (`onConnect` & `ConnectionMode.Loose`)**:
+     - Connects any two relatives directly on the canvas by dragging between circular handles on node borders (top, bottom, left, right).
+     - Zero modal obstruction: automatically detects cross-family alliance, generation level relationship, prompts for quick description, and persists immediately to IndexedDB.
+     - **Click-to-Edit Connection**: Clicking any relationship edge opens a prompt to update the relation label or delete the bond.
      - Color-coded edge badges: Purple for Cross-Family, Pink for Spouses, Green for Parent-Child, Blue for Siblings, and Amber for In-Laws.
      - Interactive ribbon to view, inspect, and remove custom kinship links.
    - Interactive zoom (0.15x to 1.5x), pan, mini-map, and generation badges.

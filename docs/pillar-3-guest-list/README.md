@@ -22,10 +22,14 @@ When adding or editing a guest party, planners have access to a full tabular mem
 - **Special Care & Assistance**: Input for wheelchair assistance, ground floor rooms, or diabetic meals.
 - **Automatic Headcount Calculation**: Dynamically computes adult vs child numbers from valid member rows.
 
-### 2.2 Multi-Event RSVP Attendance Matrix
-- Displays a real-time matrix of all ceremonies scheduled in Pillar 1 against each guest party.
-- 1-click status toggle (*Confirmed*, *Declined*, *Tentative*).
-- Feeds live expected headcounts directly to the Pillar 1 Calendar Week View.
+### 2.2 Flexible Party & Individual RSVP Matrix
+- **Party-Level Master Toggle**: 1-click attendance toggle on the party row with live attendance counter badges (`X/Y attending`).
+- **Individual Guest RSVP Matrix**: Expanding any party row reveals individual ceremony toggles for each member (e.g. Grandma attends Haldi and Wedding, but skips the late-night Cocktail).
+- **Downstream Attendance Synchronization**:
+  - **Pillar 1 (Ceremonies)**: Exact expected headcounts per ceremony dynamically reflect individual guest and party confirmations.
+  - **Pillar 4 (Accommodations)**: Room allocation modal displays ceremony attendance badges (`✓ Attending`) and allows selecting specific confirmed members for each room.
+  - **Pillar 5 (Travel & Fleet)**: Left guest tray features an "Attending" filter tab and green RSVP badges to prioritize confirmed travelers for vehicles.
+  - **Pillar 6 (Seating Charts)**: Table seat assignment drawer provides an "Attending Guests Only" filter for the active ceremony.
 
 ### 2.3 Guest Metrics & Dietary Analytics
 - Real-time KPI cards: Total Guests, Adults, Elders, Children, Infants, Pure Veg meals, Jain meals, Non-Veg meals, and Special Care needs.

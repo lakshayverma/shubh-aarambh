@@ -19,16 +19,25 @@ Indian weddings feature distinct guest cohorts: close family attending all funct
 3. **Regal Sacred Mandala (`regal_mandala`)**: Auspicious Vedic mandala watermark with saffron, marigold, and warm ambient glow.
 4. **Contemporary Ivory (`contemporary_ivory`)**: Modern champagne ivory minimalism with slate typography, clean micro-borders, and luxury monogram elegance.
 
-### 2.3 Cultural Color Palettes & Granular Color Pickers
-- **6 Cultural Palettes**: One-click quick presets including *Royal Rajputana*, *Mughal Emerald*, *Saffron Sunset*, *Blush & Gold*, *Midnight Sapphire*, and *Contemporary Ivory*.
-- **Interactive Hex Color Pickers**: Individual HTML5 color inputs for Primary (Headings/Couples), Secondary/Accent, Outer Background, and Card Borders.
-- **Background Watermark Themes**: Planners can choose between *Ornate Damask Arches*, *Sacred Mandala Watermark*, *Mughal Trellis Vine*, *Imperial Radial Aura*, *Clean Linen*, or solid canvas.
-- Dynamically embedded into live UI preview, downloaded PNG graphics, and standalone interactive HTML export packages.
+### 2.3 3-Column Inline Designer Studio (`EInvitesManager.tsx`)
+Instead of a modal popup, Pillar 7 provides an inline 3-column designer studio workbench:
+- **Column 1 (Data & Cohort)**:
+  - Cohort Audience selector (`whole_wedding`, `ceremony_only`, `initial_events`, `party_only`).
+  - Included ceremonies & events grouped directly adjacent under the cohort with automatic preselection.
+  - Title, URL slug, opening greetings, host family names, custom message, and RSVP contact.
+- **Column 2 (Visuals & Aesthetics)**:
+  - 4 Design Template selectors with preview badges.
+  - 6 Cultural Pre-defined Color Palettes.
+  - Custom Color Pickers (Primary, Accent, Card Background, Card Border).
+  - Background Watermark Theme selectors with repeating patterns and visible contrast.
+- **Column 3 (Live Preview & Quick Export)**:
+  - Real-time live card preview updating instantly as values or colors change.
+  - Watermark pattern rendered directly on the card background with corner ornaments and arch emblem.
+  - **Full-Height Unclipped PNG Export**: Captures complete ceremony schedule with zero scrollbars or text clipping.
+  - Standalone HTML export and formatted WhatsApp copy button.
 
-### 2.4 Embedded Invite List on Same Screen (`EInvitesManager.tsx`)
-- Planners can view all created e-invite variants side-by-side with live previews.
-- Instant switching between cohorts to inspect card styling, included ceremonies, and slug paths.
-- One-click copy for WhatsApp formatted invitations, PNG download, and Standalone HTML export.
+### 2.4 Variants Overview & Management
+- Gallery cards view of all created variants with quick edit in 3-col studio, PNG download, and delete.
 
 ---
 
