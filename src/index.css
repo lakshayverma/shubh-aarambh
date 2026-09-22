@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Theme 1: Royal Festive (Default) - Maroon, Marigold Gold, Ivory */
+  :root, [data-theme="royal-festive"] {
+    --theme-primary: #7B1113;
+    --theme-primary-hover: #630d0f;
+    --theme-primary-light: #FDE8E9;
+    --theme-secondary: #D97706;
+    --theme-secondary-light: #FEF3C7;
+    --theme-accent: #B45309;
+    --theme-background: #FCFBF7;
+    --theme-card: #FFFFFF;
+    --theme-border: #E8DFD8;
+    --theme-text-main: #271E1D;
+    --theme-text-muted: #786B69;
+  }
+
+  /* Theme 2: Minimalist Slate - Modern Charcoal, Indigo, Pure White */
+  [data-theme="minimalist-slate"] {
+    --theme-primary: #1E293B;
+    --theme-primary-hover: #0F172A;
+    --theme-primary-light: #F1F5F9;
+    --theme-secondary: #4F46E5;
+    --theme-secondary-light: #EEF2FF;
+    --theme-accent: #6366F1;
+    --theme-background: #F8FAFC;
+    --theme-card: #FFFFFF;
+    --theme-border: #E2E8F0;
+    --theme-text-main: #0F172A;
+    --theme-text-muted: #64748B;
+  }
+
+  /* Theme 3: Pastel Luxury - Blush Rose, Rose Gold, Sage */
+  [data-theme="pastel-luxury"] {
+    --theme-primary: #BE185D;
+    --theme-primary-hover: #9D174D;
+    --theme-primary-light: #FCE7F3;
+    --theme-secondary: #B45309;
+    --theme-secondary-light: #FEF3C7;
+    --theme-accent: #65A30D;
+    --theme-background: #FDF9F8;
+    --theme-card: #FFFFFF;
+    --theme-border: #F3E8E6;
+    --theme-text-main: #37282F;
+    --theme-text-muted: #88727B;
+  }
+
+  /* Theme 4: Peacock Splendor - Royal Teal, Emerald, Champagne Gold */
+  [data-theme="peacock-splendor"] {
+    --theme-primary: #0F766E;
+    --theme-primary-hover: #115E59;
+    --theme-primary-light: #CCFBF1;
+    --theme-secondary: #CA8A04;
+    --theme-secondary-light: #FEF08A;
+    --theme-accent: #0D9488;
+    --theme-background: #F4FBFB;
+    --theme-card: #FFFFFF;
+    --theme-border: #D1EBE9;
+    --theme-text-main: #132D2B;
+    --theme-text-muted: #567573;
+  }
+
+  /* Theme 5: Sunlit Saffron - Warm Saffron, Terracotta, Sand */
+  [data-theme="sunlit-saffron"] {
+    --theme-primary: #C2410C;
+    --theme-primary-hover: #9A3412;
+    --theme-primary-light: #FFEDD5;
+    --theme-secondary: #D97706;
+    --theme-secondary-light: #FEF3C7;
+    --theme-accent: #EA580C;
+    --theme-background: #FFFDF9;
+    --theme-card: #FFFFFF;
+    --theme-border: #F5E6D8;
+    --theme-text-main: #382116;
+    --theme-text-muted: #7E6457;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--theme-border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-text-muted);
+}
