@@ -9,12 +9,9 @@ A **100% offline-first Progressive Web App (PWA)** built with **React 18, TypeSc
 - **100% Client-Side & Zero Cloud Overhead**: All data is stored locally in the browser's IndexedDB via `Dexie.js`. No backend servers, no subscriptions, and no API keys required.
 - **Offline-First PWA**: Configured with `vite-plugin-pwa` and Workbox for instant offline asset caching. Features an in-app installation banner and a live online/offline network indicator.
 - **Data Portability & Backups**: Built-in JSON export (`vivah-planner-backup.json`) and 1-click restore to effortlessly migrate data between devices and preserve backups.
-- **5 Cultural & Contemporary Palettes**: Instant live switching among 5 design themes:
-  1. **Royal Festive** (Deep Maroon, Marigold Gold, Ivory)
-  2. **Minimalist Slate** (Modern Charcoal, Indigo, Pure White)
-  3. **Pastel Luxury** (Blush Rose, Rose Gold, Sage Green)
-  4. **Peacock Splendor** (Royal Teal, Emerald, Champagne Gold)
-  5. **Sunlit Saffron** (Warm Saffron, Terracotta, Sand)
+- **5 Cultural Palettes & Per-Wedding Custom Themes**: Instant global switching among 5 curated palettes, plus an in-depth **Custom Theme & Color Picker per wedding** (custom Primary, Secondary, Accent, and Background colors injected directly into CSS variables).
+- **Configurable Pair Terminology**: Full customization of side names (e.g. *Team Ananya* / *Team Aarav* or *Ladkiwale* / *Ladkewale*) reflected universally across all 7 pillars.
+- **Ultra-Wide Workspace Viewport**: Optimized layout spanning `max-w-[1720px]` providing ample room for multi-day calendar grids, complex family trees, and 15–85 split vehicle seating.
 - **Multi-Wedding Coordinator**: Manage multiple client weddings from a unified dashboard, switch active events on the fly, or load the pre-configured *"Aarav & Ananya's Royal Jaipur Wedding"* demo with a single click.
 
 ---
@@ -40,17 +37,20 @@ A **100% offline-first Progressive Web App (PWA)** built with **React 18, TypeSc
 
 Detailed architectural specifications and feature breakdowns for each pillar are documented in the [`docs/`](./docs) folder:
 
-### 1. [Dates & Ceremonies Timeline](./docs/pillar-1-dates-and-events/README.md)
+### 1. [Dates & Ceremonies Calendar](./docs/pillar-1-dates-and-events/README.md)
 - Guided 3-step Indian wedding creation wizard (The Couple, Dates & City, Pre-populated Ceremonies: Mehendi, Sangeet, Haldi, Vivah, Reception).
 - Real-time Muhurat Countdown Timer (Days, Hours, Minutes, Seconds).
+- **Calendar Week View** (default) with day columns, time slots, side filter, ritual icons (☀️, 🎨, 🎵, 👑, 🥂), and **Live RSVP Expected Headcounts**.
 - Chronological timeline with dress codes and 1-click `.ics` calendar export.
 
-### 2. [Family Hierarchy & Roles](./docs/pillar-2-family-information/README.md)
-- Dual-view interface: Structured cards split by *Ladkewale* and *Ladkiwale* across 4 generation tiers, plus an interactive genealogical tree graph powered by `@xyflow/react`.
+### 2. [Family Hierarchy & Merged Relations](./docs/pillar-2-family-information/README.md)
+- **Merged with Guest List**: Relatives from Guest List with kinship annotations automatically join the genealogical directory and tree.
+- Dual-view interface: Structured cards split by customizable pair terms (*Team Ananya* vs *Team Aarav*) across 4 generation tiers, plus an interactive genealogical tree graph powered by `@xyflow/react`.
 - Operational role assignments (e.g. *Baraat Reception Lead*, *Pooja & Rituals Lead*), direct WhatsApp/call shortcuts, and a custom tag engine with global promotion support.
 
-### 3. [Guest List & Multi-Event RSVP](./docs/pillar-3-guest-list/README.md)
-- Family party grouping (primary contact, adult/child headcounts, side affiliation).
+### 3. [Guest List & Tabular Member Editor](./docs/pillar-3-guest-list/README.md)
+- **Tabular Member Editing**: Manage individual party members in a spreadsheet-style table.
+- Primary contact radio selector, age tiers (**Adult, Elder, Child, Infant**), and **Indian Kinship Relation Guides** to Bride and Groom.
 - Multi-event RSVP attendance matrix tracking attendance per ceremony.
 - Dietary preference counters (Pure Veg, Jain, Non-Veg, Vegan) and special assistance notes.
 - CSV Import & Export for spreadsheet synchronization.
@@ -62,18 +62,22 @@ Detailed architectural specifications and feature breakdowns for each pillar are
 - Printable Front Desk Rooming List for hotel check-in desks.
 
 ### 5. [Travel & Vehicle Seating](./docs/pillar-5-travel-arrangements/README.md)
+- **15–85% Drag-and-Drop Seating**: Left sticky guest tray with search and filter; right vehicle fleet grid with interactive drop zones.
+- **RHD vs LHD Steering Toggle**: Supports Right-Hand Drive (India, UK, Australia) and Left-Hand Drive (USA, Canada) steering configurations with 1-click on-the-fly flip.
+- **Luggage Boot Capacity**: Visual rear trunk space tracking suitcases and check-in baggage.
+- **Country Model Presets Dropdown**: Popular models grouped by India (Innova, Ertiga, Fortuner), USA (Escalade, Suburban), Australia (Prado, Carnival), Canada, and UK.
 - Chronological flight and train arrival tracker with airport pickup batching.
-- Fleet management covering commercial shuttles, hire cabs, and personal family vehicles.
-- Pictorial automotive seating chart rendering car chassis layouts with click-to-seat allocation for Driver, Co-Driver, and Passengers.
 
 ### 6. [Seating Charts & 2D Floor Plan](./docs/pillar-6-seating-charts/README.md)
 - Function-specific 2D floor plans (Sangeet, Reception, Pheras) with 10px snap-to-grid canvas.
 - Draggable venue elements: Main Stage, Sacred Mandap, LED Dance Floor, Round Banquet Tables (8/10), Rectangular Tables, and Royal Couple Diwans.
 - Table seat assignment drawer with side color coding and capacity alerts.
 
-### 7. [Festive E-Invites & Exporter](./docs/pillar-7-e-invites/README.md)
-- Multi-cohort e-invites with dedicated URL slugs (e.g. All Functions vs Reception-only).
-- Live festive card preview with gold-foiled borders, Indian arch emblems, and ceremony itineraries.
+### 7. [Festive E-Invites & 16-Combination Engine](./docs/pillar-7-e-invites/README.md)
+- **4 Invite Types &times; 4 Design Templates = 16 Combinations**:
+  - *Types*: Whole Wedding, Just the Ceremony, Initial Events, Party Only.
+  - *Templates*: Royal Palace Arch, Mughal Floral Trellis, Regal Sacred Mandala, Contemporary Ivory.
+- **Embedded Invite List**: View and switch all created invites side-by-side on the same screen.
 - High-res PNG card download, standalone single-file interactive HTML exporter, 1-click WhatsApp message generator, and dedicated public invite route (`#/invite/:slug`).
 
 ---

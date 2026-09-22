@@ -1,53 +1,35 @@
-# Pillar 2: Family Hierarchy & Roles
+# Pillar 2: Family Hierarchy & Merged Relations
 
 ## 1. Overview & Purpose
-In Indian weddings, family coordination is critical. Responsibilities such as greeting the Baraat, managing jewelry safes, distributing room keys, or coordinating Pandit rituals are handled by specific aunts, uncles, siblings, and elders. 
+Indian weddings are family-centric milestones uniting two extensive family networks. Pillar 2 enables planners to organize key relatives, assign ceremonial responsibilities, and visualize kinship structures.
 
-Pillar 2 provides:
-- A **Dual-View System**:
-  1. Structured **Directory / Card View** organized by side (*Ladkiwale* & *Ladkewale*) and generation tiers.
-  2. Interactive **Graphical Family Tree Graph** powered by `@xyflow/react` (React Flow).
-- **Wedding Roles & POC Assignments** (e.g. "Baraat Reception Lead", "Catering & Hospitality POC").
-- Direct **WhatsApp & Phone Call Integration** for instant one-click communication.
-- Comprehensive **Tagging Engine** with circular icon badges and global promotion support.
+Crucially, **Pillar 2 is merged with Pillar 3 (Guest List)**: any guest designated with kinship relations (e.g. *Father, Mother, Mama, Chacha, Bua, Maasi, Cousin*) or age tiers (*Elder, Senior*) is automatically integrated into the Family Directory and the React Flow genealogical tree graph.
 
 ---
 
 ## 2. Key Features & Capabilities
 
-### 2.1 Dual-View System (`FamilyManager.tsx`)
-Planners can toggle between two modes:
+### 2.1 Dual-View Architecture (`FamilyManager.tsx`)
 1. **Directory / Cards View**:
-   - Split side-by-side: **Ladkewale (Groom's Family)** on the left, **Ladkiwale (Bride's Family)** on the right.
-   - Grouped by hierarchical generation levels:
-     - **Gen 1**: Grandparents & Senior Family Elders (e.g. *Dada/Dadi*, *Nana/Nani*).
-     - **Gen 2**: Parents, Aunts & Uncles (e.g. *Chacha/Chachi*, *Mama/Mami*, *Bua/Fufa*, *Massi/Masa*).
-     - **Gen 3**: The Couple, Siblings & Cousins.
-     - **Gen 4**: Children, Nieces & Nephews.
-   - Each card displays relationship, contact details, wedding day duties, and tags.
-2. **Graphical Family Tree Graph (`@xyflow/react`)**:
-   - Interactive canvas with pan, zoom, and MiniMap navigation.
-   - Custom styled nodes (`FamilyMemberNode`) color-coded by side:
-     - *Ladkewale* nodes: Warm amber/gold borders.
-     - *Ladkiwale* nodes: Festive rose/crimson borders.
-   - Displays generation tier, member name, assigned role, and visual tag badges directly inside each node.
+   - Split side-by-side columns: **Groom's Side** on the left (Amber/Gold) and **Bride's Side** on the right (Rose/Crimson).
+   - Source filter toggle: View **All Relatives**, **Core Family Members Only**, or **Guest List Relatives**.
+   - Contact shortcuts: 1-click telephone calling and direct WhatsApp messaging (`wa.me`) with phone formatting.
+   - Key responsibilities display (e.g. *Baraat Reception Lead*, *Safawala Coordinator*, *Kanyadaan POC*).
+2. **Interactive Genealogical Tree Graph (`@xyflow/react`)**:
+   - Renders a multi-generational visual hierarchy.
+   - **Groom's Relatives on the Left** and **Bride's Relatives on the Right**.
+   - Structured vertical tiers across **4 Generation Levels**:
+     - **Gen 1 (Top)**: Grandparents & Elders (*Dada, Dadi, Nana, Nani*)
+     - **Gen 2**: Parents, Uncles & Aunts (*Father, Mother, Chacha, Mama, Bua, Maasi*)
+     - **Gen 3**: Couple, Siblings, Cousins & Peers (*Bride, Groom, Brother, Sister, Cousin*)
+     - **Gen 4 (Bottom)**: Children & Grandchildren
+   - Interactive zoom, pan, mini-map, and generation badges.
 
-### 2.2 Wedding Day Roles & Point-of-Contact (POC)
-Planners can assign operational titles directly to family members, such as:
-- *Chief Host (Ladkewale)*
-- *Pooja & Rituals Lead (coordinates muhurat items with Pandit ji)*
-- *Baraat & Safa Coordinator*
-- *Hospitality & Room Key Coordinator*
-- *Bride Squad & Joota Chupai Lead*
+### 2.2 Dynamic Pair Terminology
+- Reads `wedding.brideSideTerm` (e.g. *Team Ananya / Ladkiwale*) and `wedding.groomSideTerm` (e.g. *Team Aarav / Ladkewale*) throughout all labels, cards, and graph headers.
 
-### 2.3 Instant Calling & WhatsApp Shortcuts
-Family cards feature quick-action buttons:
-- Call button (`tel:+91...`)
-- WhatsApp deep-link (`https://wa.me/...`) for instant communication with leads.
-
-### 2.4 Tagging System Integration
-- Supports assigning both **Wedding-Scoped Tags** (e.g. *Baraat Coordinator*, *Sangeet Dancer*) and **Global Tags** (e.g. *VIP Guest*, *Elderly Care*).
-- Tags render as circular icon pills with configurable colors.
+### 2.3 Tagging & Operational Role Engine
+- Associates custom role badges (e.g. VIP, Ritual Lead, Airport Greeter) with wedding-scoped or global tag promotion.
 
 ---
 
@@ -59,16 +41,12 @@ export interface FamilyMember {
   weddingId: string;
   name: string;
   side: 'ladkiwale' | 'ladkewale';
-  relation: string; // e.g. "Father", "Mother", "Sister", "Mama", "Chacha", "Bua"
-  generationLevel: number; // 1 to 4
+  relation: string; // e.g. "Mother", "Father", "Sister", "Mama", "Chacha", "Bua"
+  generationLevel: number; // 1: Grandparents, 2: Parents/Uncles, 3: Couple/Siblings, 4: Children
   phone?: string;
   email?: string;
-  roleTitle?: string; // Designated wedding duty
+  roleTitle?: string;
   tagIds: string[];
   notes?: string;
-  parentId?: string; // Optional ancestor linkage for tree graph
 }
 ```
-
-IndexedDB Table Indexes:
-- `familyMembers`: `id, weddingId, side, relation, generationLevel`

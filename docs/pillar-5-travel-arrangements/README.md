@@ -1,77 +1,62 @@
-# Pillar 5: Travel Arrangements & Pictorial Vehicle Seating
+# Pillar 5: Travel Arrangements, Fleet & Pictorial Vehicle Seating
 
 ## 1. Overview & Purpose
-Transporting dozens or hundreds of wedding guests arriving via flights and trains requires tight coordination between airport pickup shuttles, hire cabs, and personal family vehicles. Planners need to know who is driving, who is riding where, and how to cluster arrivals arriving around the same time into shared Innovas or tempo travellers.
-
-Pillar 5 provides:
-- A **Chronological Arrivals & Departures Tracker** for flights and trains.
-- **Vehicle Fleet Management** covering commercial shuttles, hire cabs, and personal family vehicles.
-- An interactive **Pictorial Automotive Seating Chart** rendering vehicle seat layouts with designated roles (**Driver**, **Co-Driver / Front**, and **Rear Passengers**).
-- Guest seating allocation directly from the Guest List.
+Destination Indian weddings require moving hundreds of guests between airports, railway stations, and heritage venues. Pillar 5 provides arrival tracking and a pictorial vehicle seating planner with drag-and-drop allocation.
 
 ---
 
 ## 2. Key Features & Capabilities
 
-### 2.1 Arrivals & Departures Tracker (`TravelManager.tsx`)
-- Tracks incoming and outgoing transit:
-  - **Travel Modes**: Flight, Train, Personal Car, Bus.
-  - **Carrier & PNR**: Flight number (e.g. *6E 2341*), Train number (*12992 Intercity*), or car registration number.
-  - **Origin City & Destination Hub**: e.g., *Mumbai (BOM) &rarr; Udaipur Airport (UDR)*.
-  - **Date & Time Stamp**: Helps planners cluster guests arriving in the same 60-minute window for airport fleet pickups.
-  - **Direction Indicators**: Visual badge for Pickups (*Arrival*) vs Airport Drops (*Departure*).
+### 2.1 15–85% Split Drag-and-Drop Seating Planner (`TravelManager.tsx`)
+- **Left 15–20% Sticky Guest Tray**:
+  - Displays all guests with search and filtering by *All*, *Unseated*, and *Seated*.
+  - Draggable HTML5 guest chips with age emojis (👴 Elder, 👤 Adult, 🧒 Child, 👶 Infant).
+  - Status indicators showing current vehicle assignment.
+- **Right 80–85% Fleet Grid**:
+  - Displays automotive chassis cards for every commercial shuttle, rental van, or personal car.
+  - Interactive droppable seat zones: drag any guest onto any seat to assign instantly.
+  - Dedicated **Clear / Unassign button (`X`)** on each seat with immediate reactive database deletion.
+  - Click-to-assign modal for non-drag touch devices.
 
-### 2.2 Vehicle Fleet Setup
-- Supports different automotive categories:
-  - **SUV (7-Seater / Innova Crysta)**: 2 front + 3 middle + 2 rear seats.
-  - **SUV (6-Seater Captain)**: 2 front + 2 captain chairs + 2 rear seats.
-  - **Sedan (4-Seater)**: 2 front + 2 rear seats.
-  - **Tempo Traveller (12-Seater)**: Group van for large family delegations.
-  - **Personal Car vs. Commercial Cab**: Flag differentiating family-driven vehicles (where a family member accommodates other guests) from hired commercial chauffeurs.
-- Driver information: Driver name, phone number, vehicle plate number.
+### 2.2 Right-Hand Drive (RHD) vs Left-Hand Drive (LHD) Steering
+- **RHD (India, UK, Australia)**: Front row places Co-Driver on Left, Driver on Right with steering wheel icon.
+- **LHD (USA, Canada)**: Front row places Driver on Left with steering wheel icon, Co-Driver on Right.
+- **Instant Flip Button**: 1-click toggle button on every car card to switch steering orientation on the fly.
 
-### 2.3 Pictorial Automotive Seating Layout
-- Each vehicle card renders an **overhead visual car chassis diagram**:
-  - **Windshield Marker**: Clearly indicates the front of the vehicle.
-  - **Driver Seat**: Marked with steering wheel badge `[D]` in warm amber.
-  - **Co-Driver Seat**: Front passenger seat beside the driver.
-  - **Middle Row**: Passenger seats.
-  - **Rear Row**: Third-row passenger seats.
-- **Click-to-Seat Interaction**: Clicking any seat opens a dialog to:
-  - Designate role (*Driver*, *Co-Driver*, *Passenger*).
-  - Pick the assigned guest from the Guest List.
-  - Clear/unassign seat with 1 click.
+### 2.3 Luggage Boot Capacity (Trunk Space)
+- Visual rear boot zone on vehicle diagrams showing bag slots and suitcase icons (`🧳`).
+- Planners configure bag capacity per vehicle (e.g. 4 check-in bags for Innova, 6 for Suburban).
+- Aggregate fleet luggage capacity metrics.
+
+### 2.4 Country Vehicle Presets Dropdown
+Pre-configured vehicle models grouped by country:
+- **India (🇮🇳)**: Toyota Innova Crysta, Innova Hycross, Maruti Ertiga, Mahindra Scorpio-N, Mahindra XUV700, Toyota Fortuner, Force Urbania/Traveller (14s), Mercedes-Benz E-Class, Honda City.
+- **USA (🇺🇸)**: Cadillac Escalade ESV, Chevrolet Suburban/Tahoe, GMC Yukon XL, Chrysler Pacifica, Ford Transit Van (14s), Tesla Model X, Lincoln Navigator.
+- **Canada (🇨🇦)**: Toyota Sienna AWD, Ford Expedition Max, Honda Odyssey, Subaru Ascent, Chevrolet Express Van.
+- **Australia (🇦🇺)**: Toyota LandCruiser Prado, Kia Carnival, Toyota HiAce Commuter, Hyundai Staria, Mazda CX-90.
+- **UK (🇬🇧)**: Mercedes-Benz V-Class, Range Rover LWB, VW Multivan, Ford Tourneo Custom.
+
+### 2.5 Flight & Train Arrival Tracker
+- Chronological arrival logs with airport/station pickup batching, carrier flight numbers, and PNRs.
 
 ---
 
 ## 3. Data Model & IndexedDB Schema
 
 ```typescript
-export interface TravelItem {
-  id: string;
-  weddingId: string;
-  partyId?: string;
-  guestIds: string[];
-  direction: 'arrival' | 'departure';
-  mode: 'flight' | 'train' | 'personal_car' | 'bus';
-  carrierNumber?: string;
-  originCity?: string;
-  destinationHub?: string;
-  dateTime: string;
-  pnr?: string;
-  notes?: string;
-}
-
 export interface Vehicle {
   id: string;
   weddingId: string;
-  name: string; // e.g. "Innova Crysta 1", "Rohan's Fortuner"
-  category: 'sedan_4' | 'suv_6' | 'suv_7' | 'tempo_12' | 'bus_30' | 'personal_car';
+  name: string;
+  category: 'sedan_4' | 'sedan_5' | 'suv_6' | 'suv_7' | 'tempo_12' | 'van_14' | 'bus_30' | 'personal_car';
   plateNumber?: string;
   isPersonalVehicle: boolean;
   ownerGuestId?: string;
   driverName?: string;
   driverPhone?: string;
+  driveSide?: 'RHD' | 'LHD';
+  luggageCapacityBags?: number;
+  countryPreset?: string;
   status: 'scheduled' | 'dispatched' | 'completed';
 }
 
@@ -84,8 +69,3 @@ export interface VehicleSeat {
   guestId?: string;
 }
 ```
-
-IndexedDB Table Indexes:
-- `travelItems`: `id, weddingId, partyId, direction, dateTime`
-- `vehicles`: `id, weddingId, category, isPersonalVehicle`
-- `vehicleSeats`: `id, weddingId, vehicleId, seatIndex, guestId`

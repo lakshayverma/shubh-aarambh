@@ -1,59 +1,37 @@
-# Pillar 3: Guest List & Multi-Event RSVP Matrix
+# Pillar 3: Guest List, Tabular Party Members & Multi-Event RSVP
 
 ## 1. Overview & Purpose
-Indian wedding guest management is inherently complex:
-- Guests are invited as **Family Units / Parties** (e.g., "The Kapoor Family" with primary contact, multiple adults, and children).
-- Not every guest attends every ceremony: close relatives attend all 5 rituals, while colleagues or extended acquaintances may only be invited to the Sangeet or Reception.
-- Strict **Dietary Preferences** (Pure Vegetarian, strict Jain food without root vegetables, Non-Vegetarian, Vegan) must be tracked for catering guarantees.
-
-Pillar 3 provides:
-- **Family Unit / Party Grouping** with adult and child headcounts.
-- An interactive **Multi-Event RSVP Attendance Matrix**.
-- Dietary preference tracking (Jain meals, pure veg, non-veg).
-- Real-time **Headcount & Catering Analytics**.
-- **CSV Bulk Import & Export** for easy synchronization with spreadsheets.
+Indian wedding guest lists are structured around **family units / parties** (*Parivaar*) containing multiple individual members across generations. Pillar 3 allows wedding planners to manage guest parties, edit individual members in a full tabular spreadsheet view, mark primary contacts, set age tiers (*Adult, Elder, Child, Infant*), and track multi-ceremony RSVP matrix.
 
 ---
 
 ## 2. Key Features & Capabilities
 
-### 2.1 Family Unit & Party Grouping (`GuestListManager.tsx`)
-- Guests are grouped into parties (e.g. *Malhotra Family*, *Rohan & Friends*).
-- Each party tracks:
-  - Party Name & Primary Contact Name.
-  - Contact Phone & Email.
-  - Side Affiliation: *Ladkewale*, *Ladkiwale*, or *Mutual*.
-  - Counts: Adults Count & Children Count.
-  - Tag attachments (e.g. *VIP*, *Elderly Care*).
+### 2.1 Tabular Party Member Editor (`GuestListManager.tsx`)
+When adding or editing a guest party, planners have access to a full tabular member editor with:
+- **Primary Contact Radio**: Designates the primary family representative for WhatsApp invitations and phone contact.
+- **Member Name**: Individual name for seating charts and place cards.
+- **Age Tier Dropdown**:
+  - `adult`: Adult (18+)
+  - `elder`: Elder / Senior Citizen (60+)
+  - `child`: Child (2–12 yrs)
+  - `infant`: Infant / Toddler (<2 yrs)
+- **Family Generation Tier**: Gen 1 (Elders), Gen 2 (Parents/Uncles), Gen 3 (Couple/Cousins/Peers), Gen 4 (Kids).
+- **Relation to Bride & Groom Guides**: Standardized Indian kinship guide dropdown (*Father, Mother, Brother, Sister, Bhabi, Jiju, Dada, Dadi, Nana, Nani, Chacha, Chachi, Taya, Tayi, Mama, Mami, Bua, Fufa, Maasi, Mausa, Cousin, Friend, Colleague*).
+- **Dietary Preference**: Pure Veg, Jain (no root vegetables), Non-Veg, Vegan.
+- **Special Care & Assistance**: Input for wheelchair assistance, ground floor rooms, or diabetic meals.
+- **Automatic Headcount Calculation**: Dynamically computes adult vs child numbers from valid member rows.
 
 ### 2.2 Multi-Event RSVP Attendance Matrix
-- Displays an interactive matrix table where each column corresponds to a scheduled wedding ceremony (Mehendi, Sangeet, Haldi, Wedding, Reception).
-- Planners can toggle attendance with a single click per ceremony per party.
-- Visual state:
-  - **Attending / Confirmed**: Green active check pill.
-  - **Not Attending / Declined**: Muted toggle state.
+- Displays a real-time matrix of all ceremonies scheduled in Pillar 1 against each guest party.
+- 1-click status toggle (*Confirmed*, *Declined*, *Tentative*).
+- Feeds live expected headcounts directly to the Pillar 1 Calendar Week View.
 
-### 2.3 Individual Guest Profiles & Dietary Preferences
-Expanding any party row reveals individual profiles for each attendee:
-- **Age Category**: Adult or Child.
-- **Dietary Preference**:
-  - **Pure Vegetarian**: Traditional Indian vegetarian cooking.
-  - **Jain**: Strict vegetarian without garlic, onion, potatoes, or root vegetables.
-  - **Non-Vegetarian**: Poultry/meat options.
-  - **Vegan**: 100% plant-based.
-- **Special Assistance Flags**: Wheelchair requirements, elderly mobility assistance, ground-floor accessibility needs.
+### 2.3 Guest Metrics & Dietary Analytics
+- Real-time KPI cards: Total Guests, Adults, Elders, Children, Infants, Pure Veg meals, Jain meals, Non-Veg meals, and Special Care needs.
 
-### 2.4 Real-Time Headcount & Catering Analytics
-The analytics banner at the top aggregates live numbers across the wedding:
-- **Total Headcount**: Total invited guests, adults count, children count.
-- **Pure Veg Meals**: Total confirmed vegetarian heads for banquet kitchen prep.
-- **Jain Meals Count**: Crucial metric for specialized Jain banquet catering.
-- **Non-Veg Meals Count**: Count for cocktail & reception banquets.
-- **Total Parties**: Number of invitation envelopes / units.
-
-### 2.5 Spreadsheet Integration (CSV Import & Export)
-- **Export to CSV**: Generates a clean spreadsheet file with Party Name, Primary Contact, Phone, Email, Side, Adults, Children, and Notes.
-- **Import from CSV**: Parses any standard CSV file, creates family units and primary guests, and automatically validates columns.
+### 2.4 CSV Import & Export
+- Standalone CSV import and export with standard headers for quick bulk loading from Excel or Google Sheets.
 
 ---
 
@@ -63,7 +41,7 @@ The analytics banner at the top aggregates live numbers across the wedding:
 export interface GuestParty {
   id: string;
   weddingId: string;
-  partyName: string; // e.g. "Kapoor Family"
+  partyName: string;
   primaryContactName: string;
   phone?: string;
   email?: string;
@@ -79,23 +57,13 @@ export interface Guest {
   partyId: string;
   weddingId: string;
   name: string;
-  ageCategory: 'adult' | 'child';
+  ageCategory: 'adult' | 'child' | 'infant' | 'elder';
   dietaryPreference: 'pure_veg' | 'jain' | 'non_veg' | 'vegan';
-  allergies?: string;
-  specialAssistance?: string; // e.g. "Wheelchair", "Ground Floor"
-}
-
-export interface EventRsvp {
-  id: string;
-  weddingId: string;
-  partyId: string;
-  guestId?: string;
-  eventId: string;
-  status: 'invited' | 'confirmed' | 'declined' | 'tentative';
+  isPrimaryContact?: boolean;
+  relationToBride?: string;
+  relationToGroom?: string;
+  generationLevel?: number;
+  specialAssistance?: string;
+  tagIds?: string[];
 }
 ```
-
-IndexedDB Table Indexes:
-- `guestParties`: `id, weddingId, side`
-- `guests`: `id, partyId, weddingId`
-- `eventRsvps`: `id, weddingId, partyId, guestId, eventId`

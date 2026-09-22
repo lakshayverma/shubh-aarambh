@@ -1,4 +1,4 @@
-# Pillar 1: Wedding Dates & Functions Timeline
+# Pillar 1: Wedding Dates & Functions Timeline & Calendar
 
 ## 1. Overview & Purpose
 Indian weddings are multi-day celebrations comprising distinct cultural rituals, ceremonial timings (Shubh Muhurats), dress codes, and varied venue locations. Pillar 1 serves as the central timekeeper and scheduling backbone of **Vivah Planner**.
@@ -6,7 +6,10 @@ Indian weddings are multi-day celebrations comprising distinct cultural rituals,
 It provides:
 - A guided **3-Step Indian Wedding Creation Wizard**.
 - A live **Muhurat Countdown Timer** down to the second.
-- An interactive **Ceremonies & Functions Timeline**.
+- **Calendar Week View** (default) with day-by-day columns, time slots, and responsive layout alongside a **Timeline List View**.
+- **Side Filter Dropdown** supporting custom pair terminology (e.g. *Bride's Side (Team Ananya)* vs *Groom's Side (Team Aarav)*).
+- **Ritual Icons & Emojis** (☀️ Haldi, 🎨 Mehendi, 🎵 Sangeet, 👑 Wedding/Pheras, 🥂 Reception, 💍 Roka, 🍸 Cocktail).
+- **Live RSVP Expected Headcount Badges** calculating confirmed attendees per ceremony with Bride/Groom breakdown.
 - One-click **Calendar Sync (.ics export)** for calendar apps (Google Calendar, Apple Calendar, Outlook).
 
 ---
@@ -36,42 +39,24 @@ When a planner creates a wedding, the wizard walks them through:
 - Renders an auspicious real-time countdown card showing **Days, Hours, Minutes, and Seconds** remaining until the sacred wedding ceremony.
 - Updates dynamically every second with zero cloud overhead.
 
-### 2.3 Interactive Itinerary Timeline (`EventsTimeline.tsx`)
-- **Chronological Flow**: Renders ceremonial cards along a vertical visual timeline.
-- **Color-Coded Ritual Badges**:
-  - *Haldi*: Saffron/Amber
-  - *Mehendi*: Emerald Green
-  - *Sangeet*: Royal Purple
-  - *Wedding / Pheras*: Crimson Red
-  - *Reception*: Sapphire Blue
-- **Ceremony Details**: Tracks Start Time, End Time, Venue/Hall, Dress Code theme, and Planner notes (e.g. vendor instructions, dholak arrival).
-- **Add / Edit / Delete Modal**: Planners can add custom functions (e.g. Roka, Chooda ceremony, Baraat assembly, Cocktail party) or adjust timings at any point.
-- **Calendar (.ics) Export**: Generates a standard `.ics` iCalendar file that planners or couples can share with guests to import the multi-day itinerary directly into their phone calendars.
+### 2.3 Calendar Week View (`EventsTimeline.tsx`)
+- **Day-by-Day Columns**: Automatically maps all days across the wedding's duration into structured columns with formatted dates, day numbers (Day 1, Day 2, etc.), and prominent **Muhurat Day** highlighting.
+- **Time Slots & Ritual Cards**: Each ceremony card displays:
+  - Ritual icon & color badge (☀️ Haldi, 🎨 Mehendi, 🎵 Sangeet, 👑 Vivah, 🥂 Reception)
+  - Start Time to End Time
+  - Venue location
+  - Dress code theme badge (e.g. *Sunshine Yellow*, *Indo-Western Glamour*)
+  - **Live RSVP Expected Headcount Badge**: Real-time attendee counter calculated from Pillar 3 RSVPs (e.g. `185 Attending (110B / 75G)`).
+- **Side Filter**: Filter ceremonies and headcount numbers by *Both Sides*, *Bride's Side*, or *Groom's Side* using dynamic pair terminology.
+- **Switch to List View**: Toggle between the Day-by-Day Week View and the classic vertical chronological timeline with one click.
+- **Add / Edit / Delete Modal**: Planners can add custom ceremonies or adjust timings with immediate IndexedDB reactivity.
+- **Calendar (.ics) Export**: Generates a standard `.ics` iCalendar file that planners or couples can share with guests.
 
 ---
 
 ## 3. Data Model & IndexedDB Schema
 
 ```typescript
-export interface Wedding {
-  id: string;
-  title: string;
-  brideName: string;
-  groomName: string;
-  brideSideName: string;
-  groomSideName: string;
-  startDate: string;
-  endDate: string;
-  primaryDate: string; // Wedding ceremony date
-  city: string;
-  venue: string;
-  coverImage?: string;
-  theme: string;
-  notes?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
 export interface WeddingEvent {
   id: string;
   weddingId: string;
@@ -86,7 +71,3 @@ export interface WeddingEvent {
   orderIndex: number;
 }
 ```
-
-IndexedDB Table Indexes:
-- `weddings`: `id, primaryDate, createdAt, updatedAt`
-- `events`: `id, weddingId, date, orderIndex`
