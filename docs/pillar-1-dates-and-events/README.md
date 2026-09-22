@@ -49,6 +49,7 @@ When a planner creates a wedding, the wizard walks them through:
   - **Live RSVP Expected Headcount Badge**: Real-time attendee counter calculated from Pillar 3 RSVPs (e.g. `185 Attending (110B / 75G)`).
 - **Side Filter**: Filter ceremonies and headcount numbers by *Both Sides*, *Bride's Side*, or *Groom's Side* using dynamic pair terminology.
 - **Switch to List View**: Toggle between the Day-by-Day Week View and the classic vertical chronological timeline with one click.
+- **Event Form Ceremony Auto-Prefill**: When adding or customizing events, selecting an Event Type (*Haldi, Mehendi, Sangeet, Wedding, Reception, Roka, Cocktail, Other*) auto-populates culturally accurate defaults across Name, Start/End Time, Venue sub-location, Dress Code, and Ritual notes. Planners can also click the interactive `✨ Pre-fill [Type] defaults` button to replenish defaults at any time.
 - **Add / Edit / Delete Modal**: Planners can add custom ceremonies or adjust timings with immediate IndexedDB reactivity.
 - **Calendar (.ics) Export**: Generates a standard `.ics` iCalendar file that planners or couples can share with guests.
 

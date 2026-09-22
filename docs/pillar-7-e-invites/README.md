@@ -19,7 +19,13 @@ Indian weddings feature distinct guest cohorts: close family attending all funct
 3. **Regal Sacred Mandala (`regal_mandala`)**: Auspicious Vedic mandala watermark with saffron, marigold, and warm ambient glow.
 4. **Contemporary Ivory (`contemporary_ivory`)**: Modern champagne ivory minimalism with slate typography, clean micro-borders, and luxury monogram elegance.
 
-### 2.3 Embedded Invite List on Same Screen (`EInvitesManager.tsx`)
+### 2.3 Cultural Color Palettes & Granular Color Pickers
+- **6 Cultural Palettes**: One-click quick presets including *Royal Rajputana*, *Mughal Emerald*, *Saffron Sunset*, *Blush & Gold*, *Midnight Sapphire*, and *Contemporary Ivory*.
+- **Interactive Hex Color Pickers**: Individual HTML5 color inputs for Primary (Headings/Couples), Secondary/Accent, Outer Background, and Card Borders.
+- **Background Watermark Themes**: Planners can choose between *Ornate Damask Arches*, *Sacred Mandala Watermark*, *Mughal Trellis Vine*, *Imperial Radial Aura*, *Clean Linen*, or solid canvas.
+- Dynamically embedded into live UI preview, downloaded PNG graphics, and standalone interactive HTML export packages.
+
+### 2.4 Embedded Invite List on Same Screen (`EInvitesManager.tsx`)
 - Planners can view all created e-invite variants side-by-side with live previews.
 - Instant switching between cohorts to inspect card styling, included ceremonies, and slug paths.
 - One-click copy for WhatsApp formatted invitations, PNG download, and Standalone HTML export.

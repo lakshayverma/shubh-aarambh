@@ -41,11 +41,13 @@ Detailed architectural specifications and feature breakdowns for each pillar are
 - Guided 3-step Indian wedding creation wizard (The Couple, Dates & City, Pre-populated Ceremonies: Mehendi, Sangeet, Haldi, Vivah, Reception).
 - Real-time Muhurat Countdown Timer (Days, Hours, Minutes, Seconds).
 - **Calendar Week View** (default) with day columns, time slots, side filter, ritual icons (☀️, 🎨, 🎵, 👑, 🥂), and **Live RSVP Expected Headcounts**.
+- **Event Form Ceremony Auto-Prefill**: Selecting ceremony types automatically fills in standard timings, venues, dress codes, and ritual notes with 1-click replenish.
 - Chronological timeline with dress codes and 1-click `.ics` calendar export.
 
 ### 2. [Family Hierarchy & Merged Relations](./docs/pillar-2-family-information/README.md)
 - **Merged with Guest List**: Relatives from Guest List with kinship annotations automatically join the genealogical directory and tree.
 - Dual-view interface: Structured cards split by customizable pair terms (*Team Ananya* vs *Team Aarav*) across 4 generation tiers, plus an interactive genealogical tree graph powered by `@xyflow/react`.
+- **Overlap-Free Tree Spacing & Kinship Links**: Dynamic Groom/Bride wing separation, automated generational lineage edges, central animated Vivah union bond, and a **Cross-Family Relation Link Builder** with color-coded kinship tags.
 - Operational role assignments (e.g. *Baraat Reception Lead*, *Pooja & Rituals Lead*), direct WhatsApp/call shortcuts, and a custom tag engine with global promotion support.
 
 ### 3. [Guest List & Tabular Member Editor](./docs/pillar-3-guest-list/README.md)
@@ -73,10 +75,11 @@ Detailed architectural specifications and feature breakdowns for each pillar are
 - Draggable venue elements: Main Stage, Sacred Mandap, LED Dance Floor, Round Banquet Tables (8/10), Rectangular Tables, and Royal Couple Diwans.
 - Table seat assignment drawer with side color coding and capacity alerts.
 
-### 7. [Festive E-Invites & 16-Combination Engine](./docs/pillar-7-e-invites/README.md)
+### 7. [Festive E-Invites & Theme Designer](./docs/pillar-7-e-invites/README.md)
 - **4 Invite Types &times; 4 Design Templates = 16 Combinations**:
   - *Types*: Whole Wedding, Just the Ceremony, Initial Events, Party Only.
   - *Templates*: Royal Palace Arch, Mughal Floral Trellis, Regal Sacred Mandala, Contemporary Ivory.
+- **Custom Color Pickers & Cultural Palettes**: 6 cultural palettes (Rajputana, Mughal, Saffron, Blush, Midnight, Ivory), hex color pickers, and background watermark patterns (Damask, Mandala, Floral Trellis, Imperial Gradient, Clean Linen).
 - **Embedded Invite List**: View and switch all created invites side-by-side on the same screen.
 - High-res PNG card download, standalone single-file interactive HTML exporter, 1-click WhatsApp message generator, and dedicated public invite route (`#/invite/:slug`).
 

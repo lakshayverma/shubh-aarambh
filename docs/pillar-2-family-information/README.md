@@ -16,14 +16,20 @@ Crucially, **Pillar 2 is merged with Pillar 3 (Guest List)**: any guest designat
    - Contact shortcuts: 1-click telephone calling and direct WhatsApp messaging (`wa.me`) with phone formatting.
    - Key responsibilities display (e.g. *Baraat Reception Lead*, *Safawala Coordinator*, *Kanyadaan POC*).
 2. **Interactive Genealogical Tree Graph (`@xyflow/react`)**:
-   - Renders a multi-generational visual hierarchy.
+   - Renders a multi-generational visual hierarchy with **expanded node spacing (320px horizontal pitch, 200px vertical tier pitch)** to prevent node overlaps.
+   - **Dynamic Side Separation**: Automatically calculates Groom side width and dynamically spaces the Bride's wing (minimum 450px clearance) ensuring zero overlap regardless of family size.
    - **Groom's Relatives on the Left** and **Bride's Relatives on the Right**.
    - Structured vertical tiers across **4 Generation Levels**:
      - **Gen 1 (Top)**: Grandparents & Elders (*Dada, Dadi, Nana, Nani*)
      - **Gen 2**: Parents, Uncles & Aunts (*Father, Mother, Chacha, Mama, Bua, Maasi*)
      - **Gen 3**: Couple, Siblings, Cousins & Peers (*Bride, Groom, Brother, Sister, Cousin*)
      - **Gen 4 (Bottom)**: Children & Grandchildren
-   - Interactive zoom, pan, mini-map, and generation badges.
+   - **Automatic Hierarchical Edges**: Generates generational parent-child lineage connections within each family wing, plus a central animated golden bond (`💍 Sacred Vivah Union 💍`) connecting the Groom and Bride wings.
+   - **Cross-Family & Kinship Relation Builder (`+ Link Relatives / Cross-Family`)**:
+     - Connects any two relatives across or within families (e.g. *Samdhi-Samdhan*, *Husband & Wife*, *In-Laws*, *Cousins*).
+     - Color-coded edge badges: Purple for Cross-Family, Pink for Spouses, Green for Parent-Child, Blue for Siblings, and Amber for In-Laws.
+     - Interactive ribbon to view, inspect, and remove custom kinship links.
+   - Interactive zoom (0.15x to 1.5x), pan, mini-map, and generation badges.
 
 ### 2.2 Dynamic Pair Terminology
 - Reads `wedding.brideSideTerm` (e.g. *Team Ananya / Ladkiwale*) and `wedding.groomSideTerm` (e.g. *Team Aarav / Ladkewale*) throughout all labels, cards, and graph headers.
