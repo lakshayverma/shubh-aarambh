@@ -30,6 +30,83 @@ interface EventsTimelineProps {
   wedding: Wedding;
 }
 
+export const EVENT_TYPE_DEFAULTS: Record<
+  WeddingEvent['type'],
+  {
+    name: string;
+    startTime: string;
+    endTime: string;
+    venueArea: string;
+    dressCode: string;
+    notes: string;
+  }
+> = {
+  haldi: {
+    name: 'Phoolon Ki Haldi & Chuda Ceremony',
+    startTime: '10:30',
+    endTime: '13:30',
+    venueArea: 'Poolside Lawn & Sunken Garden',
+    dressCode: 'Bright Sunshine Yellow / Traditional Lehariya',
+    notes: 'Dry organic haldi, fresh marigold petals shower, dholak team arrival at 10:00 AM, sweet lassi & thandai counters active',
+  },
+  mehendi: {
+    name: 'Mehendi Ki Raat & Sitar Melodies',
+    startTime: '15:00',
+    endTime: '19:00',
+    venueArea: 'Courtyard Lawn & Haveli Corridor',
+    dressCode: 'Pastel Florals, Mint Green & Mustard Silks',
+    notes: 'Stationed mehendi artists, traditional choodi & floral jewellery stall, live Rajasthani folk singer',
+  },
+  sangeet: {
+    name: 'Sangeet Extravaganza & DJ Night',
+    startTime: '19:30',
+    endTime: '00:30',
+    venueArea: 'Grand Royal Ballroom & Stage',
+    dressCode: 'Indo-Western Glitz, Shimmering Sequins & Tuxedos',
+    notes: 'Choreographed family dance entries, couple performance, professional DJ setup, LED dance floor, signature cocktail bar',
+  },
+  wedding: {
+    name: 'Shubh Vivah & Sacred Royal Pheras',
+    startTime: '18:00',
+    endTime: '22:30',
+    venueArea: 'Sunset Courtyard & Lakeside Mandap Pavilion',
+    dressCode: 'Royal Traditional Sherwani & Regal Bridal Crimson/Pastel',
+    notes: 'Baraat procession assembly at 5:00 PM, Milni ritual at 6:00 PM, Jaimala / Varmala at 7:00 PM, Vedic Pheras at 8:15 PM (Shubh Muhurat)',
+  },
+  reception: {
+    name: 'Grand Royal Reception Gala Feast',
+    startTime: '20:00',
+    endTime: '23:30',
+    venueArea: 'Palace Amphitheater & Banquet Lawns',
+    dressCode: 'Formal Black Tie, Royal Velvets & Fine Silk Sarees',
+    notes: 'Couple stage greetings photo-op, 56-Bhog multi-cuisine banquet feast, live sufi/acoustic orchestra',
+  },
+  roka: {
+    name: 'Auspicious Roka & Ring Exchange Ceremony',
+    startTime: '11:00',
+    endTime: '14:30',
+    venueArea: 'Heritage Darbar Hall',
+    dressCode: 'Elegant Ethnic & Traditional Kurtas',
+    notes: 'Shagun gift exchange, blessings by elders, dry fruit & mithai hampers distribution',
+  },
+  cocktail: {
+    name: 'Sundowner Cocktail & Welcome Soirée',
+    startTime: '18:30',
+    endTime: '23:30',
+    venueArea: 'Rooftop Terrace Lounge / Lake Deck',
+    dressCode: 'Contemporary Cocktail Attire & Evening Gowns',
+    notes: 'Live acoustic band, molecular mixology bar, woodfired gourmet appetizers, casual icebreaker games',
+  },
+  other: {
+    name: 'Welcome High Tea & Guest Registration',
+    startTime: '16:00',
+    endTime: '18:00',
+    venueArea: 'Hotel Lobby & Verandah',
+    dressCode: 'Casual Smart',
+    notes: 'Welcome hampers handover, room key coordination, logistics helpdesk active',
+  },
+};
+
 export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
   const events = useLiveQuery(
     () => db.events.where('weddingId').equals(wedding.id).sortBy('orderIndex'),
@@ -151,16 +228,22 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
     return sortedDates;
   }, [wedding.startDate, wedding.endDate, wedding.primaryDate, events]);
 
+  const applyTypeDefaults = (targetType: WeddingEvent['type']) => {
+    const def = EVENT_TYPE_DEFAULTS[targetType];
+    if (!def) return;
+    setName(def.name);
+    setStartTime(def.startTime);
+    setEndTime(def.endTime);
+    setVenue(`${wedding.venue} (${def.venueArea})`);
+    setDressCode(def.dressCode);
+    setNotes(def.notes);
+  };
+
   const openAddModal = (initialDate?: string) => {
     setEditingEvent(null);
-    setName('');
     setType('mehendi');
     setDate(initialDate || wedding.startDate);
-    setStartTime('12:00');
-    setEndTime('16:00');
-    setVenue(wedding.venue);
-    setDressCode('');
-    setNotes('');
+    applyTypeDefaults('mehendi');
     setIsModalOpen(true);
   };
 
@@ -731,11 +814,29 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Ritual / Type</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-theme-text-main">Ritual / Type</label>
+                    <button
+                      type="button"
+                      onClick={() => applyTypeDefaults(type)}
+                      className="text-[11px] font-semibold text-theme-primary hover:underline flex items-center gap-1"
+                      title="Pre-fill recommended details for this ceremony"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Pre-fill</span>
+                    </button>
+                  </div>
                   <select
                     value={type}
-                    onChange={(e) => setType(e.target.value as WeddingEvent['type'])}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                    onChange={(e) => {
+                      const newType = e.target.value as WeddingEvent['type'];
+                      setType(newType);
+                      // If adding new ceremony, auto-prefill details
+                      if (!editingEvent) {
+                        applyTypeDefaults(newType);
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-semibold cursor-pointer"
                   >
                     <option value="mehendi">🎨 Mehendi</option>
                     <option value="haldi">☀️ Haldi</option>
