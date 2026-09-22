@@ -30,12 +30,121 @@ import {
   Palette,
   Eye,
   Send,
+  Sliders,
+  Maximize2,
 } from 'lucide-react';
 
 interface EInvitesManagerProps {
   wedding: Wedding;
   onOpenTagManager?: () => void;
 }
+
+// Cultural Pre-defined Color Palettes
+export const COLOR_PALETTES = [
+  {
+    id: 'rajputana_crimson',
+    name: 'Royal Rajputana',
+    primary: '#7B1113',
+    secondary: '#D97706',
+    background: '#FFFDF9',
+    cardBg: '#FFFFFF',
+    text: '#271E1D',
+    borderColor: '#D97706',
+  },
+  {
+    id: 'mughal_emerald',
+    name: 'Mughal Emerald',
+    primary: '#0F766E',
+    secondary: '#CA8A04',
+    background: '#F0FDF4',
+    cardBg: '#FFFFFF',
+    text: '#134E4A',
+    borderColor: '#CA8A04',
+  },
+  {
+    id: 'saffron_marigold',
+    name: 'Saffron Sunset',
+    primary: '#C2410C',
+    secondary: '#EAB308',
+    background: '#FFFBEB',
+    cardBg: '#FFFFFF',
+    text: '#431407',
+    borderColor: '#EA580C',
+  },
+  {
+    id: 'pastel_romance',
+    name: 'Blush & Gold',
+    primary: '#BE185D',
+    secondary: '#F59E0B',
+    background: '#FDF2F8',
+    cardBg: '#FFFFFF',
+    text: '#831843',
+    borderColor: '#F472B6',
+  },
+  {
+    id: 'midnight_sapphire',
+    name: 'Midnight Sapphire',
+    primary: '#1E3A8A',
+    secondary: '#F59E0B',
+    background: '#F8FAFC',
+    cardBg: '#FFFFFF',
+    text: '#0F172A',
+    borderColor: '#3B82F6',
+  },
+  {
+    id: 'contemporary_slate',
+    name: 'Contemporary Ivory',
+    primary: '#334155',
+    secondary: '#6366F1',
+    background: '#F8FAFC',
+    cardBg: '#FFFFFF',
+    text: '#0F172A',
+    borderColor: '#94A3B8',
+  },
+];
+
+// Background Themes / Patterns
+export const BACKGROUND_PATTERNS: {
+  id: NonNullable<EInvite['backgroundTheme']>;
+  name: string;
+  css: (color: string) => string;
+}[] = [
+  {
+    id: 'damask',
+    name: 'Ornate Damask Arches',
+    css: (color) =>
+      `radial-gradient(circle at 50% 50%, ${color}0D 10%, transparent 11%), radial-gradient(circle at 0% 0%, ${color}0D 10%, transparent 11%), radial-gradient(circle at 100% 100%, ${color}0D 10%, transparent 11%)`,
+  },
+  {
+    id: 'mandala',
+    name: 'Sacred Mandala Watermark',
+    css: (color) =>
+      `radial-gradient(circle at center, ${color}12 0%, ${color}06 35%, transparent 70%)`,
+  },
+  {
+    id: 'floral',
+    name: 'Mughal Trellis Vine',
+    css: (color) =>
+      `repeating-linear-gradient(45deg, ${color}08 0px, ${color}08 2px, transparent 2px, transparent 16px), repeating-linear-gradient(-45deg, ${color}08 0px, ${color}08 2px, transparent 2px, transparent 16px)`,
+  },
+  {
+    id: 'imperial_gradient',
+    name: 'Imperial Radial Aura',
+    css: (color) =>
+      `radial-gradient(circle at top right, ${color}18, transparent 65%), radial-gradient(circle at bottom left, ${color}15, transparent 65%)`,
+  },
+  {
+    id: 'clean_linen',
+    name: 'Clean Linen Minimal',
+    css: (color) =>
+      `repeating-linear-gradient(0deg, ${color}05, ${color}05 1px, transparent 1px, transparent 8px)`,
+  },
+  {
+    id: 'none',
+    name: 'Solid Pure Canvas',
+    css: () => 'none',
+  },
+];
 
 export const INVITE_TYPE_CONFIG: Record<
   EInvite['inviteType'],
@@ -157,6 +266,18 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
   const [rsvpPhone, setRsvpPhone] = useState('');
   const [googleMapsUrl, setGoogleMapsUrl] = useState('');
 
+  // Custom theme colors & background pattern states
+  const [useCustomTheme, setUseCustomTheme] = useState(false);
+  const [themePrimary, setThemePrimary] = useState('#7B1113');
+  const [themeSecondary, setThemeSecondary] = useState('#D97706');
+  const [themeBackground, setThemeBackground] = useState('#FFFDF9');
+  const [themeCardBg, setThemeCardBg] = useState('#FFFFFF');
+  const [themeText, setThemeText] = useState('#271E1D');
+  const [themeBorderColor, setThemeBorderColor] = useState('#D97706');
+  const [backgroundTheme, setBackgroundTheme] = useState<
+    NonNullable<EInvite['backgroundTheme']>
+  >('damask');
+
   // Card reference for PNG capture
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -184,6 +305,16 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     }
   };
 
+  const applyColorPalette = (palette: (typeof COLOR_PALETTES)[0]) => {
+    setThemePrimary(palette.primary);
+    setThemeSecondary(palette.secondary);
+    setThemeBackground(palette.background);
+    setThemeCardBg(palette.cardBg);
+    setThemeText(palette.text);
+    setThemeBorderColor(palette.borderColor);
+    setUseCustomTheme(true);
+  };
+
   const openAddInvite = () => {
     setEditingInvite(null);
     setTitle('Whole Wedding Celebrations');
@@ -198,6 +329,18 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     );
     setRsvpPhone('+91 98000 00000');
     setGoogleMapsUrl(`https://maps.google.com/?q=${encodeURIComponent(wedding.venue + ' ' + wedding.city)}`);
+
+    // Reset color theme to default Rajputana
+    const defaultPal = COLOR_PALETTES[0];
+    setUseCustomTheme(false);
+    setThemePrimary(defaultPal.primary);
+    setThemeSecondary(defaultPal.secondary);
+    setThemeBackground(defaultPal.background);
+    setThemeCardBg(defaultPal.cardBg);
+    setThemeText(defaultPal.text);
+    setThemeBorderColor(defaultPal.borderColor);
+    setBackgroundTheme('damask');
+
     setIsModalOpen(true);
   };
 
@@ -222,6 +365,27 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     setCustomMessage(inv.customMessage);
     setRsvpPhone(inv.rsvpPhone || '');
     setGoogleMapsUrl(inv.googleMapsUrl || '');
+
+    if (inv.themeColors) {
+      setUseCustomTheme(true);
+      setThemePrimary(inv.themeColors.primary);
+      setThemeSecondary(inv.themeColors.secondary);
+      setThemeBackground(inv.themeColors.background);
+      setThemeCardBg(inv.themeColors.cardBg || '#FFFFFF');
+      setThemeText(inv.themeColors.text);
+      setThemeBorderColor(inv.themeColors.borderColor || inv.themeColors.secondary);
+    } else {
+      setUseCustomTheme(false);
+      const defaultPal = COLOR_PALETTES[0];
+      setThemePrimary(defaultPal.primary);
+      setThemeSecondary(defaultPal.secondary);
+      setThemeBackground(defaultPal.background);
+      setThemeCardBg(defaultPal.cardBg);
+      setThemeText(defaultPal.text);
+      setThemeBorderColor(defaultPal.borderColor);
+    }
+
+    setBackgroundTheme(inv.backgroundTheme || 'damask');
     setIsModalOpen(true);
   };
 
@@ -248,6 +412,17 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       coverGreeting: coverGreeting.trim(),
       hostFamilyNames: hostFamilyNames.trim(),
       customMessage: customMessage.trim(),
+      themeColors: useCustomTheme
+        ? {
+            primary: themePrimary,
+            secondary: themeSecondary,
+            background: themeBackground,
+            text: themeText,
+            cardBg: themeCardBg,
+            borderColor: themeBorderColor,
+          }
+        : undefined,
+      backgroundTheme,
       rsvpPhone: rsvpPhone.trim() || undefined,
       googleMapsUrl: googleMapsUrl.trim() || undefined,
       createdAt: editingInvite ? editingInvite.createdAt : Date.now(),
@@ -292,17 +467,31 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
         ? 'contemporary_ivory'
         : 'regal_mandala');
 
-    const config = TEMPLATE_CONFIG[currentTemplate];
+    const defaultTmpl = TEMPLATE_CONFIG[currentTemplate];
+    const colors = {
+      primary: activeInvite.themeColors?.primary || defaultTmpl.primaryText,
+      secondary: activeInvite.themeColors?.secondary || defaultTmpl.accentColor,
+      background: activeInvite.themeColors?.background || defaultTmpl.cardBg,
+      cardBg: activeInvite.themeColors?.cardBg || '#FFFFFF',
+      text: activeInvite.themeColors?.text || '#271E1D',
+      borderColor: activeInvite.themeColors?.borderColor || defaultTmpl.borderColor,
+    };
+
+    const patternObj = BACKGROUND_PATTERNS.find(
+      (p) => p.id === (activeInvite.backgroundTheme || 'damask')
+    ) || BACKGROUND_PATTERNS[0];
+    const patternCss = patternObj.css(colors.secondary);
+
     const includedEvents = events?.filter((ev) => activeInvite.includedEventIds.includes(ev.id)) || [];
 
     const eventsHtml = includedEvents
       .map(
         (ev) => `
-        <div style="background: rgba(255,255,255,0.9); border: 1px solid ${config.borderColor}40; border-radius: 16px; padding: 16px; margin-bottom: 12px; text-align: left;">
-          <div style="font-weight: 700; color: ${config.primaryText}; font-size: 16px;">${ev.name}</div>
+        <div style="background: rgba(255,255,255,0.92); border: 1px solid ${colors.borderColor}40; border-radius: 16px; padding: 16px; margin-bottom: 12px; text-align: left; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+          <div style="font-weight: 700; color: ${colors.primary}; font-size: 16px;">${ev.name}</div>
           <div style="font-size: 12px; color: #666; margin-top: 4px;">${ev.date} &bull; ${ev.startTime} to ${ev.endTime}</div>
           <div style="font-size: 13px; color: #333; margin-top: 4px;"><strong>Venue:</strong> ${ev.venue}</div>
-          ${ev.dressCode ? `<div style="font-size: 12px; color: ${config.accentColor}; margin-top: 4px;"><strong>Dress Code:</strong> ${ev.dressCode}</div>` : ''}
+          ${ev.dressCode ? `<div style="font-size: 12px; color: ${colors.secondary}; margin-top: 4px;"><strong>Dress Code:</strong> ${ev.dressCode}</div>` : ''}
           ${ev.notes ? `<div style="font-size: 12px; color: #777; font-style: italic; margin-top: 4px;">"${ev.notes}"</div>` : ''}
         </div>
       `
@@ -321,8 +510,9 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       margin: 0;
       padding: 24px 12px;
       font-family: 'Inter', sans-serif;
-      background: ${config.cardBg};
-      color: #271E1D;
+      background-color: ${colors.background};
+      background-image: ${patternCss};
+      color: ${colors.text};
       display: flex;
       justify-content: center;
       align-items: center;
@@ -331,26 +521,26 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     .card {
       max-width: 540px;
       width: 100%;
-      background: #FFFFFF;
-      border: 3px solid ${config.borderColor};
+      background: ${colors.cardBg};
+      border: 3px solid ${colors.borderColor};
       border-radius: 28px;
       padding: 36px 24px;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.12);
       position: relative;
       box-sizing: border-box;
     }
     h1 {
       font-family: 'Playfair Display', serif;
       font-size: 32px;
-      color: ${config.primaryText};
+      color: ${colors.primary};
       margin: 12px 0 6px;
     }
     .greeting {
       font-size: 12px;
       letter-spacing: 2px;
       text-transform: uppercase;
-      color: ${config.accentColor};
+      color: ${colors.secondary};
       font-weight: 700;
     }
     .families {
@@ -365,8 +555,8 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       line-height: 1.6;
       margin: 20px 0;
       padding: 12px 0;
-      border-top: 1px solid ${config.borderColor}40;
-      border-bottom: 1px solid ${config.borderColor}40;
+      border-top: 1px solid ${colors.borderColor}40;
+      border-bottom: 1px solid ${colors.borderColor}40;
     }
   </style>
 </head>
@@ -424,7 +614,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     alert('Invitation formatted text copied to clipboard! Ready to paste into WhatsApp.');
   };
 
-  // Active Template Config
+  // Active Template Config & Theme Customization Resolution
   const currentTemplateId: 'royal_palace' | 'mughal_floral' | 'regal_mandala' | 'contemporary_ivory' =
     activeInvite?.templateId ||
     (activeInvite?.templateStyle === 'floral_mughal'
@@ -435,8 +625,23 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       ? 'contemporary_ivory'
       : 'regal_mandala');
 
-  const activeTemplateConfig = TEMPLATE_CONFIG[currentTemplateId] || TEMPLATE_CONFIG.royal_palace;
+  const baseTemplateConfig = TEMPLATE_CONFIG[currentTemplateId] || TEMPLATE_CONFIG.royal_palace;
   const activeTypeConfig = INVITE_TYPE_CONFIG[activeInvite?.inviteType || 'whole_wedding'];
+
+  // Effective colors taking custom themeColors into account
+  const effectiveTheme = {
+    primaryText: activeInvite?.themeColors?.primary || baseTemplateConfig.primaryText,
+    accentColor: activeInvite?.themeColors?.secondary || baseTemplateConfig.accentColor,
+    borderColor: activeInvite?.themeColors?.borderColor || baseTemplateConfig.borderColor,
+    cardBg: activeInvite?.themeColors?.cardBg || baseTemplateConfig.cardBg,
+    background: activeInvite?.themeColors?.background || '#F8FAFC',
+    text: activeInvite?.themeColors?.text || '#271E1D',
+  };
+
+  const currentPattern = BACKGROUND_PATTERNS.find(
+    (p) => p.id === (activeInvite?.backgroundTheme || 'damask')
+  ) || BACKGROUND_PATTERNS[0];
+  const activePatternCss = currentPattern.css(effectiveTheme.accentColor);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -447,11 +652,11 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
             <div className="flex items-center gap-2">
               <Mail className="w-5 h-5 text-theme-primary" />
               <h2 className="text-xl font-bold font-serif text-theme-text-main">
-                Digital E-Invites & 16-Combination Designer
+                Digital E-Invites & Theme Designer
               </h2>
             </div>
             <p className="text-xs text-theme-text-muted mt-1">
-              Pillar 7: 4 invite types (Whole Wedding, Ceremony Only, Initial Events, Party Only) &times; 4 royal design templates, with embedded invite list.
+              Pillar 7: 4 invite types &times; 4 royal design templates, pre-defined cultural palettes, custom color pickers & background themes.
             </p>
           </div>
 
@@ -621,152 +826,160 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
                 </span>
               </div>
               <span className="text-[11px] font-semibold text-theme-secondary">
-                Template: {activeTemplateConfig.name}
+                Template: {baseTemplateConfig.name}
               </span>
             </div>
 
             {/* Live Visual Invitation Card Container */}
             <div
-              ref={cardRef}
-              className={`w-full max-w-xl rounded-3xl p-8 sm:p-10 shadow-2xl text-center space-y-6 relative overflow-hidden transition-all border-4`}
+              className="w-full max-w-xl p-4 sm:p-6 rounded-3xl border border-theme-border shadow-md"
               style={{
-                backgroundColor: activeTemplateConfig.cardBg,
-                borderColor: activeTemplateConfig.borderColor,
-                minHeight: '660px',
+                backgroundColor: effectiveTheme.background,
+                backgroundImage: activePatternCss,
               }}
             >
-              {/* Corner Ornaments */}
               <div
-                className="absolute top-2.5 left-2.5 w-8 h-8 border-t-2 border-l-2"
-                style={{ borderColor: activeTemplateConfig.borderColor }}
-              />
-              <div
-                className="absolute top-2.5 right-2.5 w-8 h-8 border-t-2 border-r-2"
-                style={{ borderColor: activeTemplateConfig.borderColor }}
-              />
-              <div
-                className="absolute bottom-2.5 left-2.5 w-8 h-8 border-b-2 border-l-2"
-                style={{ borderColor: activeTemplateConfig.borderColor }}
-              />
-              <div
-                className="absolute bottom-2.5 right-2.5 w-8 h-8 border-b-2 border-r-2"
-                style={{ borderColor: activeTemplateConfig.borderColor }}
-              />
-
-              {/* Decorative Arch / Emblem */}
-              <div
-                className="w-14 h-14 mx-auto rounded-full border flex items-center justify-center shadow-xs"
+                ref={cardRef}
+                className="w-full rounded-2xl p-6 sm:p-9 shadow-2xl text-center space-y-6 relative overflow-hidden transition-all border-4"
                 style={{
-                  borderColor: activeTemplateConfig.borderColor,
-                  backgroundColor: `${activeTemplateConfig.borderColor}15`,
+                  backgroundColor: effectiveTheme.cardBg,
+                  borderColor: effectiveTheme.borderColor,
+                  minHeight: '640px',
                 }}
               >
-                {currentTemplateId === 'royal_palace' && (
-                  <Crown className="w-7 h-7" style={{ color: activeTemplateConfig.borderColor }} />
-                )}
-                {currentTemplateId === 'mughal_floral' && (
-                  <Flower2 className="w-7 h-7" style={{ color: activeTemplateConfig.borderColor }} />
-                )}
-                {currentTemplateId === 'regal_mandala' && (
-                  <Compass className="w-7 h-7" style={{ color: activeTemplateConfig.borderColor }} />
-                )}
-                {currentTemplateId === 'contemporary_ivory' && (
-                  <Sparkles className="w-7 h-7" style={{ color: activeTemplateConfig.borderColor }} />
-                )}
-              </div>
+                {/* Corner Ornaments */}
+                <div
+                  className="absolute top-2.5 left-2.5 w-8 h-8 border-t-2 border-l-2"
+                  style={{ borderColor: effectiveTheme.borderColor }}
+                />
+                <div
+                  className="absolute top-2.5 right-2.5 w-8 h-8 border-t-2 border-r-2"
+                  style={{ borderColor: effectiveTheme.borderColor }}
+                />
+                <div
+                  className="absolute bottom-2.5 left-2.5 w-8 h-8 border-b-2 border-l-2"
+                  style={{ borderColor: effectiveTheme.borderColor }}
+                />
+                <div
+                  className="absolute bottom-2.5 right-2.5 w-8 h-8 border-b-2 border-r-2"
+                  style={{ borderColor: effectiveTheme.borderColor }}
+                />
 
-              {/* Greeting */}
-              <div className="space-y-1">
-                <span
-                  className="text-[11px] uppercase tracking-widest font-bold block"
-                  style={{ color: activeTemplateConfig.accentColor }}
+                {/* Decorative Arch / Emblem */}
+                <div
+                  className="w-14 h-14 mx-auto rounded-full border flex items-center justify-center shadow-xs"
+                  style={{
+                    borderColor: effectiveTheme.borderColor,
+                    backgroundColor: `${effectiveTheme.borderColor}15`,
+                  }}
                 >
-                  {activeInvite.coverGreeting}
-                </span>
-                <h1
-                  className="font-serif font-bold text-3xl sm:text-4xl tracking-tight"
-                  style={{ color: activeTemplateConfig.primaryText }}
-                >
-                  {wedding.brideName} & {wedding.groomName}
-                </h1>
-                <p className="text-xs text-stone-600 font-medium">
-                  {activeInvite.hostFamilyNames}
-                </p>
-              </div>
-
-              {/* Custom Inviting Message */}
-              <p
-                className="text-xs sm:text-sm text-stone-700 italic max-w-md mx-auto leading-relaxed py-3 border-y"
-                style={{ borderColor: `${activeTemplateConfig.borderColor}40` }}
-              >
-                "{activeInvite.customMessage}"
-              </p>
-
-              {/* Selected Events Schedule */}
-              <div className="space-y-3 pt-2">
-                <h3
-                  className="font-serif font-bold text-xs uppercase tracking-wider"
-                  style={{ color: activeTemplateConfig.primaryText }}
-                >
-                  Celebrations Schedule ({activeTypeConfig.label})
-                </h3>
-
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {events
-                    ?.filter((ev) => activeInvite.includedEventIds.includes(ev.id))
-                    .map((ev) => (
-                      <div
-                        key={ev.id}
-                        className="bg-white/85 border rounded-2xl p-3 text-left shadow-2xs space-y-1"
-                        style={{ borderColor: `${activeTemplateConfig.borderColor}30` }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span
-                            className="font-bold text-xs"
-                            style={{ color: activeTemplateConfig.primaryText }}
-                          >
-                            {ev.name}
-                          </span>
-                          <span className="text-[10px] text-stone-500 font-medium">
-                            {ev.startTime} - {ev.endTime}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-stone-600 flex items-center gap-2">
-                          <Calendar className="w-3 h-3 text-amber-600" />
-                          <span>{ev.date}</span>
-                          <span>&bull;</span>
-                          <span className="truncate">{ev.venue}</span>
-                        </div>
-                        {ev.dressCode && (
-                          <div
-                            className="text-[10px] italic font-medium"
-                            style={{ color: activeTemplateConfig.accentColor }}
-                          >
-                            Dress Code: {ev.dressCode}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  {currentTemplateId === 'royal_palace' && (
+                    <Crown className="w-7 h-7" style={{ color: effectiveTheme.borderColor }} />
+                  )}
+                  {currentTemplateId === 'mughal_floral' && (
+                    <Flower2 className="w-7 h-7" style={{ color: effectiveTheme.borderColor }} />
+                  )}
+                  {currentTemplateId === 'regal_mandala' && (
+                    <Compass className="w-7 h-7" style={{ color: effectiveTheme.borderColor }} />
+                  )}
+                  {currentTemplateId === 'contemporary_ivory' && (
+                    <Sparkles className="w-7 h-7" style={{ color: effectiveTheme.borderColor }} />
+                  )}
                 </div>
-              </div>
 
-              {/* Footer Details */}
-              <div
-                className="pt-3 border-t space-y-2"
-                style={{ borderColor: `${activeTemplateConfig.borderColor}40` }}
-              >
-                <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-stone-800">
-                  <MapPin className="w-3.5 h-3.5 text-rose-700" />
-                  <span>
-                    {wedding.venue}, {wedding.city}
+                {/* Greeting */}
+                <div className="space-y-1">
+                  <span
+                    className="text-[11px] uppercase tracking-widest font-bold block"
+                    style={{ color: effectiveTheme.accentColor }}
+                  >
+                    {activeInvite.coverGreeting}
                   </span>
+                  <h1
+                    className="font-serif font-bold text-3xl sm:text-4xl tracking-tight"
+                    style={{ color: effectiveTheme.primaryText }}
+                  >
+                    {wedding.brideName} & {wedding.groomName}
+                  </h1>
+                  <p className="text-xs text-stone-600 font-medium">
+                    {activeInvite.hostFamilyNames}
+                  </p>
                 </div>
-                {activeInvite.rsvpPhone && (
-                  <div className="text-[11px] text-stone-600">
-                    RSVP:{' '}
-                    <strong className="text-stone-900">{activeInvite.rsvpPhone}</strong>
+
+                {/* Custom Inviting Message */}
+                <p
+                  className="text-xs sm:text-sm text-stone-700 italic max-w-md mx-auto leading-relaxed py-3 border-y"
+                  style={{ borderColor: `${effectiveTheme.borderColor}40` }}
+                >
+                  "{activeInvite.customMessage}"
+                </p>
+
+                {/* Selected Events Schedule */}
+                <div className="space-y-3 pt-2">
+                  <h3
+                    className="font-serif font-bold text-xs uppercase tracking-wider"
+                    style={{ color: effectiveTheme.primaryText }}
+                  >
+                    Celebrations Schedule ({activeTypeConfig.label})
+                  </h3>
+
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {events
+                      ?.filter((ev) => activeInvite.includedEventIds.includes(ev.id))
+                      .map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="bg-white/85 border rounded-2xl p-3 text-left shadow-2xs space-y-1"
+                          style={{ borderColor: `${effectiveTheme.borderColor}30` }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className="font-bold text-xs"
+                              style={{ color: effectiveTheme.primaryText }}
+                            >
+                              {ev.name}
+                            </span>
+                            <span className="text-[10px] text-stone-500 font-medium">
+                              {ev.startTime} - {ev.endTime}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-stone-600 flex items-center gap-2">
+                            <Calendar className="w-3 h-3 text-amber-600" />
+                            <span>{ev.date}</span>
+                            <span>&bull;</span>
+                            <span className="truncate">{ev.venue}</span>
+                          </div>
+                          {ev.dressCode && (
+                            <div
+                              className="text-[10px] italic font-medium"
+                              style={{ color: effectiveTheme.accentColor }}
+                            >
+                              Dress Code: {ev.dressCode}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                   </div>
-                )}
+                </div>
+
+                {/* Footer Details */}
+                <div
+                  className="pt-3 border-t space-y-2"
+                  style={{ borderColor: `${effectiveTheme.borderColor}40` }}
+                >
+                  <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-stone-800">
+                    <MapPin className="w-3.5 h-3.5 text-rose-700" />
+                    <span>
+                      {wedding.venue}, {wedding.city}
+                    </span>
+                  </div>
+                  {activeInvite.rsvpPhone && (
+                    <div className="text-[11px] text-stone-600">
+                      RSVP:{' '}
+                      <strong className="text-stone-900">{activeInvite.rsvpPhone}</strong>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -864,7 +1077,16 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
                       <button
                         type="button"
                         key={tmplKey}
-                        onClick={() => setTemplateId(tmplKey)}
+                        onClick={() => {
+                          setTemplateId(tmplKey);
+                          if (!useCustomTheme) {
+                            // Align defaults
+                            setThemePrimary(cfg.primaryText);
+                            setThemeSecondary(cfg.accentColor);
+                            setThemeBorderColor(cfg.borderColor);
+                            setThemeCardBg(cfg.cardBg);
+                          }
+                        }}
                         className={`p-3 rounded-2xl border text-left transition-all ${
                           isSelected
                             ? 'border-theme-primary bg-theme-primary-light/40 shadow-xs'
@@ -881,6 +1103,173 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* STEP 3: COLOR THEME & PALETTES */}
+              <div className="space-y-3 p-3.5 rounded-2xl border border-theme-border bg-theme-background/60">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-theme-primary" />
+                    <span>3. Color Theme (Pre-defined Palettes or Custom Pickers)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useCustomTheme}
+                      onChange={(e) => setUseCustomTheme(e.target.checked)}
+                      className="rounded text-theme-primary focus:ring-theme-primary"
+                    />
+                    <span className="text-theme-text-muted text-[11px]">Enable Custom Colors</span>
+                  </label>
+                </div>
+
+                {/* Pre-defined Cultural Palettes */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-theme-text-muted uppercase tracking-wider block">
+                    Quick Cultural Palettes
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {COLOR_PALETTES.map((pal) => (
+                      <button
+                        type="button"
+                        key={pal.id}
+                        onClick={() => applyColorPalette(pal)}
+                        className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                          useCustomTheme && themePrimary === pal.primary
+                            ? 'border-theme-primary bg-theme-card shadow-xs ring-1 ring-theme-primary/30'
+                            : 'border-theme-border bg-theme-card/60 hover:bg-theme-card'
+                        }`}
+                      >
+                        <div className="flex -space-x-1 shrink-0">
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
+                            style={{ backgroundColor: pal.primary }}
+                          />
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
+                            style={{ backgroundColor: pal.secondary }}
+                          />
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
+                            style={{ backgroundColor: pal.borderColor }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-semibold text-theme-text-main truncate">
+                          {pal.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Granular Color Pickers (Visible when custom theme enabled) */}
+                {useCustomTheme && (
+                  <div className="pt-2 border-t border-theme-border/60 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-theme-text-muted block">
+                        Primary (Names/Headings)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={themePrimary}
+                          onChange={(e) => setThemePrimary(e.target.value)}
+                          className="w-8 h-8 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                        />
+                        <input
+                          type="text"
+                          value={themePrimary}
+                          onChange={(e) => setThemePrimary(e.target.value)}
+                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-theme-text-muted block">
+                        Accent / Secondary
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={themeSecondary}
+                          onChange={(e) => setThemeSecondary(e.target.value)}
+                          className="w-8 h-8 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                        />
+                        <input
+                          type="text"
+                          value={themeSecondary}
+                          onChange={(e) => setThemeSecondary(e.target.value)}
+                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-theme-text-muted block">
+                        Outer Background
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={themeBackground}
+                          onChange={(e) => setThemeBackground(e.target.value)}
+                          className="w-8 h-8 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                        />
+                        <input
+                          type="text"
+                          value={themeBackground}
+                          onChange={(e) => setThemeBackground(e.target.value)}
+                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-theme-text-muted block">
+                        Card Border
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={themeBorderColor}
+                          onChange={(e) => setThemeBorderColor(e.target.value)}
+                          className="w-8 h-8 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                        />
+                        <input
+                          type="text"
+                          value={themeBorderColor}
+                          onChange={(e) => setThemeBorderColor(e.target.value)}
+                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* STEP 4: BACKGROUND PATTERN THEME */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>4. Background Watermark Pattern</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {BACKGROUND_PATTERNS.map((pat) => (
+                    <button
+                      type="button"
+                      key={pat.id}
+                      onClick={() => setBackgroundTheme(pat.id)}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
+                        backgroundTheme === pat.id
+                          ? 'border-theme-primary bg-theme-primary-light/40 font-bold text-theme-text-main shadow-xs'
+                          : 'border-theme-border bg-theme-card hover:bg-theme-border/20 text-theme-text-muted'
+                      }`}
+                    >
+                      {pat.name}
+                    </button>
+                  ))}
                 </div>
               </div>
 
