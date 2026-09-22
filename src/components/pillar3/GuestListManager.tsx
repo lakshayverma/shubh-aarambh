@@ -21,11 +21,59 @@ import {
   X,
   Sparkles,
   HeartHandshake,
+  Star,
+  Baby,
+  UserCheck,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface GuestListManagerProps {
   wedding: Wedding;
   onOpenTagManager?: () => void;
+}
+
+export const RELATION_GUIDE_OPTIONS = [
+  'None',
+  'Bride',
+  'Groom',
+  'Father',
+  'Mother',
+  'Brother',
+  'Sister',
+  'Bhabi (Sister-in-law)',
+  'Jiju (Brother-in-law)',
+  'Dada (Paternal Grandfather)',
+  'Dadi (Paternal Grandmother)',
+  'Nana (Maternal Grandfather)',
+  'Nani (Maternal Grandmother)',
+  'Chacha (Paternal Uncle)',
+  'Chachi',
+  'Taya (Elder Paternal Uncle)',
+  'Tayi',
+  'Mama (Maternal Uncle)',
+  'Mami',
+  'Bua (Paternal Aunt)',
+  'Fufa',
+  'Maasi (Maternal Aunt)',
+  'Mausa',
+  'Cousin',
+  'Nephew',
+  'Niece',
+  'Close Family Friend',
+  'Colleague / Peer',
+  'Other Relative',
+];
+
+interface TabularMemberItem {
+  id?: string;
+  name: string;
+  isPrimaryContact: boolean;
+  ageCategory: 'adult' | 'child' | 'infant' | 'elder';
+  generationLevel: number;
+  relationToBride: string;
+  relationToGroom: string;
+  dietaryPreference: 'pure_veg' | 'jain' | 'non_veg' | 'vegan';
+  specialAssistance?: string;
 }
 
 export const GuestListManager: React.FC<GuestListManagerProps> = ({
@@ -50,6 +98,9 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
   );
   const allTags = useLiveQuery(() => db.tags.toArray());
 
+  const brideTerm = wedding.brideSideTerm || "Bride's Side (Ladkiwale)";
+  const groomTerm = wedding.groomSideTerm || "Groom's Side (Ladkewale)";
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSide, setFilterSide] = useState<string>('all');
   const [expandedPartyId, setExpandedPartyId] = useState<string | null>(null);
@@ -64,15 +115,11 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [side, setSide] = useState<'ladkiwale' | 'ladkewale' | 'mutual'>('mutual');
-  const [adultsCount, setAdultsCount] = useState<number>(2);
-  const [childrenCount, setChildrenCount] = useState<number>(0);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
 
-  // Individual guests list for the party in modal
-  const [modalGuests, setModalGuests] = useState<
-    { name: string; ageCategory: 'adult' | 'child' | 'infant' | 'elder'; dietaryPreference: 'pure_veg' | 'jain' | 'non_veg' | 'vegan'; specialAssistance?: string }[]
-  >([]);
+  // Tabular Members state for Party Modal
+  const [tabularMembers, setTabularMembers] = useState<TabularMemberItem[]>([]);
 
   // CSV file ref
   const csvFileRef = useRef<HTMLInputElement>(null);
@@ -86,14 +133,17 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
     return matchesSearch && matchesSide;
   });
 
-  // Calculate Metrics
-  const totalGuests = parties?.reduce((sum, p) => sum + p.adultsCount + p.childrenCount, 0) || 0;
-  const totalAdults = parties?.reduce((sum, p) => sum + p.adultsCount, 0) || 0;
-  const totalChildren = parties?.reduce((sum, p) => sum + p.childrenCount, 0) || 0;
+  // Calculate Metrics across guests
+  const totalGuests = guests?.length || parties?.reduce((sum, p) => sum + p.adultsCount + p.childrenCount, 0) || 0;
+  const adultsCount = guests?.filter((g) => g.ageCategory === 'adult').length || 0;
+  const eldersCount = guests?.filter((g) => g.ageCategory === 'elder').length || 0;
+  const childrenCount = guests?.filter((g) => g.ageCategory === 'child').length || 0;
+  const infantsCount = guests?.filter((g) => g.ageCategory === 'infant').length || 0;
 
   const jainCount = guests?.filter((g) => g.dietaryPreference === 'jain').length || 0;
   const pureVegCount = guests?.filter((g) => g.dietaryPreference === 'pure_veg').length || 0;
   const nonVegCount = guests?.filter((g) => g.dietaryPreference === 'non_veg').length || 0;
+  const assistanceCount = guests?.filter((g) => !!g.specialAssistance && g.specialAssistance.trim().length > 0).length || 0;
 
   const openAddParty = () => {
     setEditingParty(null);
@@ -102,13 +152,19 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
     setPhone('');
     setEmail('');
     setSide('mutual');
-    setAdultsCount(2);
-    setChildrenCount(0);
     setSelectedTagIds([]);
     setNotes('');
-    setModalGuests([
-      { name: '', ageCategory: 'adult', dietaryPreference: 'pure_veg' },
-      { name: '', ageCategory: 'adult', dietaryPreference: 'pure_veg' },
+    setTabularMembers([
+      {
+        name: '',
+        isPrimaryContact: true,
+        ageCategory: 'adult',
+        generationLevel: 3,
+        relationToBride: 'None',
+        relationToGroom: 'None',
+        dietaryPreference: 'pure_veg',
+        specialAssistance: '',
+      },
     ]);
     setIsModalOpen(true);
   };
@@ -120,30 +176,127 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
     setPhone(party.phone || '');
     setEmail(party.email || '');
     setSide(party.side);
-    setAdultsCount(party.adultsCount);
-    setChildrenCount(party.childrenCount);
     setSelectedTagIds(party.tagIds || []);
     setNotes(party.notes || '');
 
     const partyGuests = await db.guests.where('partyId').equals(party.id).toArray();
     if (partyGuests.length > 0) {
-      setModalGuests(
+      setTabularMembers(
         partyGuests.map((g) => ({
+          id: g.id,
           name: g.name,
-          ageCategory: g.ageCategory,
-          dietaryPreference: g.dietaryPreference,
-          specialAssistance: g.specialAssistance,
+          isPrimaryContact: !!g.isPrimaryContact,
+          ageCategory: g.ageCategory || 'adult',
+          generationLevel: g.generationLevel || (g.ageCategory === 'elder' ? 1 : g.ageCategory === 'child' ? 4 : 3),
+          relationToBride: g.relationToBride || 'None',
+          relationToGroom: g.relationToGroom || 'None',
+          dietaryPreference: g.dietaryPreference || 'pure_veg',
+          specialAssistance: g.specialAssistance || '',
         }))
       );
     } else {
-      setModalGuests([{ name: party.primaryContactName, ageCategory: 'adult', dietaryPreference: 'pure_veg' }]);
+      setTabularMembers([
+        {
+          name: party.primaryContactName,
+          isPrimaryContact: true,
+          ageCategory: 'adult',
+          generationLevel: 3,
+          relationToBride: 'None',
+          relationToGroom: 'None',
+          dietaryPreference: 'pure_veg',
+          specialAssistance: '',
+        },
+      ]);
     }
     setIsModalOpen(true);
   };
 
+  const handleSelectPrimaryContact = (index: number) => {
+    setTabularMembers((prev) =>
+      prev.map((item, i) => {
+        const isSelected = i === index;
+        return {
+          ...item,
+          isPrimaryContact: isSelected,
+        };
+      })
+    );
+    const selectedMember = tabularMembers[index];
+    if (selectedMember && selectedMember.name.trim()) {
+      setPrimaryContactName(selectedMember.name.trim());
+    }
+  };
+
+  const handleMemberChange = <K extends keyof TabularMemberItem>(
+    index: number,
+    field: K,
+    value: TabularMemberItem[K]
+  ) => {
+    setTabularMembers((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+
+      // Auto-set generation level defaults when age category changes
+      if (field === 'ageCategory') {
+        if (value === 'elder' && updated[index].generationLevel > 1) {
+          updated[index].generationLevel = 1;
+        } else if ((value === 'child' || value === 'infant') && updated[index].generationLevel < 4) {
+          updated[index].generationLevel = 4;
+        }
+      }
+
+      // If updating the primary contact's name, sync primaryContactName
+      if (field === 'name' && updated[index].isPrimaryContact) {
+        setPrimaryContactName(String(value).trim());
+      }
+
+      return updated;
+    });
+  };
+
+  const handleAddMemberRow = () => {
+    setTabularMembers((prev) => [
+      ...prev,
+      {
+        name: '',
+        isPrimaryContact: prev.length === 0,
+        ageCategory: 'adult',
+        generationLevel: 3,
+        relationToBride: 'None',
+        relationToGroom: 'None',
+        dietaryPreference: 'pure_veg',
+        specialAssistance: '',
+      },
+    ]);
+  };
+
+  const handleRemoveMemberRow = (index: number) => {
+    if (tabularMembers.length <= 1) return;
+    setTabularMembers((prev) => {
+      const filtered = prev.filter((_, i) => i !== index);
+      // If the removed item was primary, default the first item to primary
+      if (prev[index]?.isPrimaryContact && filtered.length > 0) {
+        filtered[0].isPrimaryContact = true;
+        setPrimaryContactName(filtered[0].name.trim());
+      }
+      return filtered;
+    });
+  };
+
   const handleSaveParty = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!partyName.trim() || !primaryContactName.trim()) return;
+    if (!partyName.trim()) return;
+
+    const validMembers = tabularMembers.filter((m) => m.name.trim().length > 0);
+    const effectivePrimary =
+      validMembers.find((m) => m.isPrimaryContact)?.name.trim() ||
+      primaryContactName.trim() ||
+      validMembers[0]?.name.trim() ||
+      partyName.trim();
+
+    // Auto-calculate adult vs child counts from valid members
+    const calcAdults = validMembers.filter((m) => m.ageCategory === 'adult' || m.ageCategory === 'elder').length || 1;
+    const calcChildren = validMembers.filter((m) => m.ageCategory === 'child' || m.ageCategory === 'infant').length || 0;
 
     const partyId = editingParty ? editingParty.id : `pty-${Date.now()}`;
 
@@ -151,12 +304,12 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
       id: partyId,
       weddingId: wedding.id,
       partyName: partyName.trim(),
-      primaryContactName: primaryContactName.trim(),
+      primaryContactName: effectivePrimary,
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
       side,
-      adultsCount: Number(adultsCount),
-      childrenCount: Number(childrenCount),
+      adultsCount: calcAdults,
+      childrenCount: calcChildren,
       tagIds: selectedTagIds,
       notes: notes.trim() || undefined,
     };
@@ -167,21 +320,35 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
       // Clean existing guests for this party and re-add
       await db.guests.where('partyId').equals(partyId).delete();
 
-      const guestRecords: Guest[] = modalGuests
-        .filter((g) => g.name.trim().length > 0)
-        .map((g, idx) => ({
-          id: `gst-${partyId}-${idx}`,
-          partyId,
-          weddingId: wedding.id,
-          name: g.name.trim(),
-          ageCategory: g.ageCategory,
-          dietaryPreference: g.dietaryPreference,
-          specialAssistance: g.specialAssistance?.trim() || undefined,
-        }));
+      const guestRecords: Guest[] = (validMembers.length > 0
+        ? validMembers
+        : [
+            {
+              name: effectivePrimary,
+              isPrimaryContact: true,
+              ageCategory: 'adult' as const,
+              generationLevel: 3,
+              relationToBride: 'None',
+              relationToGroom: 'None',
+              dietaryPreference: 'pure_veg' as const,
+            },
+          ]
+      ).map((m, idx) => ({
+        id: m.id || `gst-${partyId}-${idx}-${Date.now()}`,
+        partyId,
+        weddingId: wedding.id,
+        name: m.name.trim(),
+        isPrimaryContact: !!m.isPrimaryContact,
+        ageCategory: m.ageCategory,
+        generationLevel: Number(m.generationLevel) || 3,
+        relationToBride: m.relationToBride !== 'None' ? m.relationToBride : undefined,
+        relationToGroom: m.relationToGroom !== 'None' ? m.relationToGroom : undefined,
+        dietaryPreference: m.dietaryPreference,
+        specialAssistance: m.specialAssistance?.trim() || undefined,
+        tagIds: selectedTagIds,
+      }));
 
-      if (guestRecords.length > 0) {
-        await db.guests.bulkPut(guestRecords);
-      }
+      await db.guests.bulkPut(guestRecords);
 
       // Auto-assign RSVP for all events if new party
       if (!editingParty && events) {
@@ -294,7 +461,9 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
         partyId,
         weddingId: wedding.id,
         name: contact,
+        isPrimaryContact: true,
         ageCategory: 'adult',
+        generationLevel: 3,
         dietaryPreference: 'pure_veg',
       });
     }
@@ -310,9 +479,43 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
     if (csvFileRef.current) csvFileRef.current.value = '';
   };
 
+  const getAgeBadge = (age: Guest['ageCategory']) => {
+    switch (age) {
+      case 'elder':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+            <span>👴</span>
+            <span>Elder</span>
+          </span>
+        );
+      case 'adult':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+            <span>👤</span>
+            <span>Adult</span>
+          </span>
+        );
+      case 'child':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+            <span>🧒</span>
+            <span>Child</span>
+          </span>
+        );
+      case 'infant':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-pink-100 text-pink-900 border border-pink-300">
+            <span>👶</span>
+            <span>Infant</span>
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      
       {/* Header & Metrics */}
       <div className="bg-theme-card border border-theme-border p-5 rounded-3xl shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -324,7 +527,7 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
               </h2>
             </div>
             <p className="text-xs text-theme-text-muted mt-1">
-              Pillar 3: Family unit groupings, dietary preferences, ceremony attendance matrix, and CSV sync.
+              Pillar 3: Family parties, tabular members, age tiers (Adult/Elder/Child/Infant), relation guides to couple, and RSVP matrix.
             </p>
           </div>
 
@@ -355,7 +558,7 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
               className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Add Family / Party</span>
+              <span>Add Family Party</span>
             </button>
           </div>
         </div>
@@ -365,7 +568,9 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
           <div className="bg-theme-background p-3 rounded-2xl border border-theme-border/70">
             <div className="text-[10px] uppercase font-bold text-theme-text-muted">Total Headcount</div>
             <div className="text-xl font-serif font-bold text-theme-primary mt-0.5">{totalGuests} Guests</div>
-            <div className="text-[10px] text-theme-text-muted">{totalAdults} Adults &bull; {totalChildren} Kids</div>
+            <div className="text-[10px] text-theme-text-muted">
+              {adultsCount} Adults &bull; {eldersCount} Elders &bull; {childrenCount} Kids &bull; {infantsCount} Infants
+            </div>
           </div>
 
           <div className="bg-theme-background p-3 rounded-2xl border border-theme-border/70">
@@ -392,116 +597,186 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
               <span>Non-Veg</span>
             </div>
             <div className="text-xl font-serif font-bold text-rose-700 mt-0.5">{nonVegCount}</div>
-            <div className="text-[10px] text-theme-text-muted">Continental / Non-veg</div>
+            <div className="text-[10px] text-theme-text-muted">Non-vegetarian guests</div>
           </div>
 
-          <div className="bg-theme-background p-3 rounded-2xl border border-theme-border/70 col-span-2 sm:col-span-1">
-            <div className="text-[10px] uppercase font-bold text-theme-text-muted">Parties / Families</div>
-            <div className="text-xl font-serif font-bold text-theme-secondary mt-0.5">{parties?.length || 0}</div>
-            <div className="text-[10px] text-theme-text-muted">Invited units</div>
+          <div className="bg-theme-background p-3 rounded-2xl border border-theme-border/70">
+            <div className="text-[10px] uppercase font-bold text-indigo-700 flex items-center gap-1">
+              <ShieldAlert className="w-3 h-3" />
+              <span>Special Care</span>
+            </div>
+            <div className="text-xl font-serif font-bold text-indigo-700 mt-0.5">{assistanceCount}</div>
+            <div className="text-[10px] text-theme-text-muted">Wheelchair / Elderly assistance</div>
           </div>
         </div>
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-theme-card border border-theme-border p-3 rounded-2xl shadow-2xs">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-theme-text-muted absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-muted" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search party or guest name..."
-            className="w-full pl-9 pr-4 py-2 rounded-2xl border border-theme-border bg-theme-card text-xs sm:text-sm text-theme-text-main focus:outline-hidden focus:ring-2 focus:ring-theme-primary"
+            placeholder="Search family name or contact..."
+            className="w-full pl-9 pr-4 py-1.5 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs focus:outline-hidden focus:ring-2 focus:ring-theme-primary"
           />
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="text-xs text-theme-text-muted font-medium">Side:</span>
-          <select
-            value={filterSide}
-            onChange={(e) => setFilterSide(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-main"
+        <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <button
+            onClick={() => setFilterSide('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+              filterSide === 'all'
+                ? 'bg-theme-primary text-white shadow-2xs'
+                : 'text-theme-text-muted hover:bg-theme-border/30'
+            }`}
           >
-            <option value="all">All Sides</option>
-            <option value="ladkewale">Groom's Side (Ladkewale)</option>
-            <option value="ladkiwale">Bride's Side (Ladkiwale)</option>
-            <option value="mutual">Mutual Friends & Colleagues</option>
-          </select>
+            All ({parties?.length || 0})
+          </button>
+          <button
+            onClick={() => setFilterSide('ladkewale')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+              filterSide === 'ladkewale'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'text-theme-text-muted hover:bg-theme-border/30'
+            }`}
+          >
+            {groomTerm}
+          </button>
+          <button
+            onClick={() => setFilterSide('ladkiwale')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+              filterSide === 'ladkiwale'
+                ? 'bg-rose-600 text-white shadow-2xs'
+                : 'text-theme-text-muted hover:bg-theme-border/30'
+            }`}
+          >
+            {brideTerm}
+          </button>
+          <button
+            onClick={() => setFilterSide('mutual')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+              filterSide === 'mutual'
+                ? 'bg-purple-600 text-white shadow-2xs'
+                : 'text-theme-text-muted hover:bg-theme-border/30'
+            }`}
+          >
+            Mutual
+          </button>
         </div>
       </div>
 
-      {/* Multi-Event RSVP Matrix Table */}
+      {/* Guest Parties Table with Multi-Event RSVP */}
       <div className="bg-theme-card border border-theme-border rounded-3xl overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-theme-background border-b border-theme-border text-theme-text-muted font-bold uppercase tracking-wider text-[10px]">
-              <tr>
-                <th className="py-3.5 px-4">Party & Family Unit</th>
-                <th className="py-3.5 px-3">Side</th>
-                <th className="py-3.5 px-3 text-center">Headcount</th>
+          <table className="w-full text-left border-collapse min-w-[700px]">
+            <thead>
+              <tr className="border-b border-theme-border bg-theme-background/70 text-[11px] font-bold text-theme-text-muted uppercase tracking-wider">
+                <th className="py-3 px-4 w-10"></th>
+                <th className="py-3 px-4">Family Party</th>
+                <th className="py-3 px-4">Side</th>
+                <th className="py-3 px-4 text-center">Headcount</th>
                 {events?.map((ev) => (
-                  <th key={ev.id} className="py-3.5 px-2 text-center whitespace-nowrap" title={ev.name}>
-                    {ev.type.toUpperCase()}
+                  <th key={ev.id} className="py-3 px-2 text-center max-w-[90px]">
+                    <div className="truncate text-theme-text-main font-bold" title={ev.name}>
+                      {ev.name}
+                    </div>
+                    <div className="text-[9px] font-normal text-theme-text-muted capitalize">
+                      {ev.type}
+                    </div>
                   </th>
                 ))}
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-
-            <tbody className="divide-y divide-theme-border/60">
+            <tbody className="divide-y divide-theme-border text-xs">
               {filteredParties?.map((party) => {
-                const partyGuests = guests?.filter((g) => g.partyId === party.id) || [];
                 const isExpanded = expandedPartyId === party.id;
+                const partyGuests = guests?.filter((g) => g.partyId === party.id) || [];
+                const partyTags = allTags?.filter((t) => party.tagIds?.includes(t.id)) || [];
 
                 return (
                   <React.Fragment key={party.id}>
-                    <tr className="hover:bg-theme-background/50 transition-colors">
-                      {/* Party details */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setExpandedPartyId(isExpanded ? null : party.id)}
-                            className="p-1 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-                          >
-                            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                          </button>
-                          <div>
-                            <div className="font-bold text-sm text-theme-text-main flex items-center gap-2">
-                              <span>{party.partyName}</span>
-                              {party.tagIds?.map((tId) => {
-                                const t = allTags?.find((tag) => tag.id === tId);
-                                return t ? <TagBadge key={t.id} tag={t} size="sm" showLabel={false} /> : null;
-                              })}
-                            </div>
-                            <div className="text-xs text-theme-text-muted flex items-center gap-3 mt-0.5">
-                              <span>{party.primaryContactName}</span>
-                              {party.phone && <span>&bull; {party.phone}</span>}
-                            </div>
-                          </div>
-                        </div>
+                    <tr className="hover:bg-theme-background/40 transition-colors">
+                      {/* Expand / Collapse */}
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => setExpandedPartyId(isExpanded ? null : party.id)}
+                          className="p-1 rounded-md hover:bg-theme-border/40 text-theme-text-muted"
+                          title="View party members"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-theme-primary" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                        </button>
                       </td>
 
-                      {/* Side */}
-                      <td className="py-3 px-3">
+                      {/* Party Info */}
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-theme-text-main text-sm">
+                          {party.partyName}
+                        </div>
+                        <div className="text-[11px] text-theme-text-muted flex items-center gap-2 mt-0.5">
+                          <span className="flex items-center gap-1 font-medium text-theme-text-main">
+                            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                            {party.primaryContactName}
+                          </span>
+                          {party.phone && (
+                            <span className="flex items-center gap-0.5">
+                              <Phone className="w-3 h-3" />
+                              {party.phone}
+                            </span>
+                          )}
+                        </div>
+                        {partyTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {partyTags.map((t) => (
+                              <TagBadge key={t.id} tag={t} size="sm" />
+                            ))}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Side Badge */}
+                      <td className="py-3 px-4">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
-                            party.side === 'ladkewale'
-                              ? 'bg-amber-100 text-amber-800'
-                              : party.side === 'ladkiwale'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-stone-100 text-stone-800'
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            party.side === 'ladkiwale'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : party.side === 'ladkewale'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-purple-100 text-purple-800 border border-purple-200'
                           }`}
                         >
-                          {party.side}
+                          {party.side === 'ladkiwale'
+                            ? brideTerm
+                            : party.side === 'ladkewale'
+                            ? groomTerm
+                            : 'Mutual'}
                         </span>
                       </td>
 
                       {/* Headcount */}
-                      <td className="py-3 px-3 text-center">
-                        <span className="font-bold text-theme-text-main text-sm">{party.adultsCount + party.childrenCount}</span>
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-bold text-theme-text-main text-sm">
+                          {partyGuests.length > 0
+                            ? partyGuests.length
+                            : party.adultsCount + party.childrenCount}
+                        </span>
                         <div className="text-[10px] text-theme-text-muted">
-                          {party.adultsCount}A {party.childrenCount > 0 && `+ ${party.childrenCount}C`}
+                          {partyGuests.length > 0 ? (
+                            <span>
+                              {partyGuests.filter((g) => g.ageCategory === 'adult').length}A &bull;{' '}
+                              {partyGuests.filter((g) => g.ageCategory === 'elder').length}E &bull;{' '}
+                              {partyGuests.filter((g) => g.ageCategory === 'child').length}C
+                            </span>
+                          ) : (
+                            <span>{party.adultsCount}A + {party.childrenCount}C</span>
+                          )}
                         </div>
                       </td>
 
@@ -533,12 +808,14 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                           <button
                             onClick={() => openEditParty(party)}
                             className="p-1.5 text-theme-text-muted hover:text-theme-primary rounded-lg transition-colors"
+                            title="Edit party & members"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteParty(party.id)}
                             className="p-1.5 text-theme-text-muted hover:text-rose-600 rounded-lg transition-colors"
+                            title="Delete party"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -549,31 +826,83 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                     {/* Expanded Individual Guests Row */}
                     {isExpanded && (
                       <tr className="bg-theme-background/60">
-                        <td colSpan={4 + (events?.length || 0)} className="py-3 px-8">
-                          <div className="p-3 bg-theme-card border border-theme-border/70 rounded-2xl space-y-2">
-                            <div className="font-bold text-[11px] uppercase tracking-wider text-theme-text-muted">
-                              Individual Party Members ({partyGuests.length})
+                        <td colSpan={5 + (events?.length || 0)} className="py-3 px-6 sm:px-10">
+                          <div className="p-4 bg-theme-card border border-theme-border/70 rounded-2xl space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="font-bold text-xs uppercase tracking-wider text-theme-text-muted flex items-center gap-1.5">
+                                <Users className="w-3.5 h-3.5 text-theme-primary" />
+                                <span>Individual Party Members ({partyGuests.length})</span>
+                              </div>
+                              <button
+                                onClick={() => openEditParty(party)}
+                                className="text-xs font-bold text-theme-primary hover:underline flex items-center gap-1"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                <span>Edit Members</span>
+                              </button>
                             </div>
+
                             {partyGuests.length > 0 ? (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                 {partyGuests.map((g) => (
-                                  <div key={g.id} className="p-2 rounded-xl border border-theme-border bg-theme-background flex items-center justify-between text-xs">
-                                    <div>
-                                      <div className="font-bold text-theme-text-main">{g.name}</div>
-                                      <div className="text-[10px] text-theme-text-muted capitalize">
-                                        {g.ageCategory} &bull; <span className="font-semibold text-theme-primary">{g.dietaryPreference.replace('_', ' ')}</span>
+                                  <div
+                                    key={g.id}
+                                    className="p-3 rounded-xl border border-theme-border bg-theme-background flex flex-col justify-between text-xs space-y-2"
+                                  >
+                                    <div className="flex items-start justify-between gap-1">
+                                      <div>
+                                        <div className="font-bold text-theme-text-main flex items-center gap-1.5">
+                                          <span>{g.name}</span>
+                                          {g.isPrimaryContact && (
+                                            <span
+                                              className="p-0.5 rounded-full bg-amber-100 text-amber-600"
+                                              title="Primary Contact"
+                                            >
+                                              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Age Category & Generation */}
+                                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                          {getAgeBadge(g.ageCategory)}
+                                          <span className="text-[10px] text-theme-text-muted font-medium">
+                                            Gen {g.generationLevel || (g.ageCategory === 'elder' ? 1 : 3)}
+                                          </span>
+                                        </div>
                                       </div>
-                                    </div>
-                                    {g.specialAssistance && (
-                                      <span className="text-[9px] bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full font-bold">
-                                        {g.specialAssistance}
+
+                                      <span className="text-[10px] font-semibold text-theme-primary bg-theme-primary-light/50 px-2 py-0.5 rounded-md capitalize">
+                                        {g.dietaryPreference.replace('_', ' ')}
                                       </span>
-                                    )}
+                                    </div>
+
+                                    {/* Relation Guides */}
+                                    <div className="border-t border-theme-border/60 pt-1.5 text-[11px] space-y-0.5">
+                                      {g.relationToBride && (
+                                        <div className="text-rose-800 font-medium">
+                                          To Bride: <span className="font-bold">{g.relationToBride}</span>
+                                        </div>
+                                      )}
+                                      {g.relationToGroom && (
+                                        <div className="text-amber-800 font-medium">
+                                          To Groom: <span className="font-bold">{g.relationToGroom}</span>
+                                        </div>
+                                      )}
+                                      {g.specialAssistance && (
+                                        <div className="text-rose-600 font-semibold flex items-center gap-1 pt-0.5">
+                                          <ShieldAlert className="w-3 h-3" />
+                                          <span>{g.specialAssistance}</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-xs text-theme-text-muted italic">No individual guest profiles added.</p>
+                              <p className="text-xs text-theme-text-muted italic">
+                                No individual guest profiles added.
+                              </p>
                             )}
                           </div>
                         </td>
@@ -585,10 +914,13 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
               {(!filteredParties || filteredParties.length === 0) && (
                 <tr>
-                  <td colSpan={4 + (events?.length || 0)} className="py-12 text-center text-theme-text-muted">
+                  <td
+                    colSpan={5 + (events?.length || 0)}
+                    className="py-12 text-center text-theme-text-muted"
+                  >
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p className="font-bold">No parties found.</p>
-                    <p className="text-xs">Click Add Family / Party or Import CSV to get started.</p>
+                    <p className="text-xs">Click Add Family Party or Import CSV to get started.</p>
                   </td>
                 </tr>
               )}
@@ -597,17 +929,29 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
         </div>
       </div>
 
-      {/* Add / Edit Party Modal */}
+      {/* Add / Edit Party Modal with Tabular Member Editor */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
           <div
-            className="bg-theme-card border border-theme-border w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            className="bg-theme-card border border-theme-border w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal Header */}
             <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                {editingParty ? 'Edit Guest Party' : 'Add New Guest Party'}
-              </h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-theme-primary text-white flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-lg text-theme-text-main">
+                    {editingParty ? 'Edit Guest Party & Members' : 'Add New Guest Party & Members'}
+                  </h3>
+                  <p className="text-xs text-theme-text-muted">
+                    Configure family party details, primary contact, and tabular individual members with age tiers and relationship guides.
+                  </p>
+                </div>
+              </div>
+
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
@@ -616,8 +960,10 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveParty} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-3">
+            {/* Modal Form */}
+            <form onSubmit={handleSaveParty} className="p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Party Level Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-theme-text-main">Party / Family Name *</label>
                   <input
@@ -625,63 +971,41 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                     value={partyName}
                     onChange={(e) => setPartyName(e.target.value)}
                     placeholder="e.g. Malhotra Family"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-theme-primary"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Primary Contact Person *</label>
-                  <input
-                    type="text"
-                    value={primaryContactName}
-                    onChange={(e) => setPrimaryContactName(e.target.value)}
-                    placeholder="e.g. Vikram Malhotra"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Side</label>
+                  <label className="text-xs font-bold text-theme-text-main">
+                    Wedding Side Alignment *
+                  </label>
                   <select
                     value={side}
                     onChange={(e) => setSide(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-semibold"
                   >
-                    <option value="ladkewale">Ladkewale</option>
-                    <option value="ladkiwale">Ladkiwale</option>
-                    <option value="mutual">Mutual Friends</option>
+                    <option value="ladkewale">{groomTerm}</option>
+                    <option value="ladkiwale">{brideTerm}</option>
+                    <option value="mutual">Mutual Friends & Colleagues</option>
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Adults Count</label>
+                  <label className="text-xs font-bold text-theme-text-main">
+                    Primary Contact Person
+                  </label>
                   <input
-                    type="number"
-                    min="1"
-                    value={adultsCount}
-                    onChange={(e) => setAdultsCount(parseInt(e.target.value) || 1)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Children Count</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={childrenCount}
-                    onChange={(e) => setChildrenCount(parseInt(e.target.value) || 0)}
+                    type="text"
+                    value={primaryContactName}
+                    onChange={(e) => setPrimaryContactName(e.target.value)}
+                    placeholder="Auto-synced with primary member"
                     className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-theme-text-main">Phone (WhatsApp)</label>
                   <input
@@ -694,12 +1018,12 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Email (Optional)</label>
+                  <label className="text-xs font-bold text-theme-text-main">Email Address</label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="guest@example.com"
+                    placeholder="contact@family.com"
                     className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
                   />
                 </div>
@@ -713,96 +1037,250 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                 onOpenManager={onOpenTagManager}
               />
 
-              {/* Individual Guest Profiles */}
-              <div className="border-t border-theme-border/60 pt-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-theme-text-main">
-                    Individual Member Dietary Preferences
-                  </label>
+              {/* TABULAR INDIVIDUAL MEMBER LIST */}
+              <div className="border border-theme-border rounded-2xl overflow-hidden bg-theme-card">
+                <div className="p-3 bg-theme-background/80 border-b border-theme-border flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-xs text-theme-text-main flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-theme-primary" />
+                      <span>Tabular Individual Party Members ({tabularMembers.length})</span>
+                    </div>
+                    <p className="text-[11px] text-theme-text-muted">
+                      Mark the primary contact radio, set age tier (Adult, Elder, Child, Infant), and relation guides to Bride & Groom.
+                    </p>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() =>
-                      setModalGuests((prev) => [
-                        ...prev,
-                        { name: '', ageCategory: 'adult', dietaryPreference: 'pure_veg' },
-                      ])
-                    }
-                    className="text-[11px] font-semibold text-theme-primary hover:underline flex items-center gap-1"
+                    onClick={handleAddMemberRow}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
                   >
-                    <Plus className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
                     <span>Add Member</span>
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {modalGuests.map((g, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={g.name}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setModalGuests((prev) =>
-                            prev.map((item, i) => (i === idx ? { ...item, name: val } : item))
-                          );
-                        }}
-                        placeholder={`Member #${idx + 1} Name`}
-                        className="flex-1 px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
-                      />
+                <div className="overflow-x-auto max-h-[380px]">
+                  <table className="w-full text-left border-collapse min-w-[850px]">
+                    <thead>
+                      <tr className="border-b border-theme-border bg-theme-background/60 text-[10px] font-bold uppercase tracking-wider text-theme-text-muted">
+                        <th className="py-2.5 px-3 text-center w-12" title="Primary Contact">
+                          Primary
+                        </th>
+                        <th className="py-2.5 px-3 min-w-[150px]">Member Name *</th>
+                        <th className="py-2.5 px-3 min-w-[120px]">Age Tier</th>
+                        <th className="py-2.5 px-3 min-w-[110px]">Generation</th>
+                        <th className="py-2.5 px-3 min-w-[140px]">Relation to Bride</th>
+                        <th className="py-2.5 px-3 min-w-[140px]">Relation to Groom</th>
+                        <th className="py-2.5 px-3 min-w-[110px]">Dietary</th>
+                        <th className="py-2.5 px-3 min-w-[130px]">Special Needs</th>
+                        <th className="py-2.5 px-3 text-center w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-theme-border/60 text-xs">
+                      {tabularMembers.map((member, index) => (
+                        <tr
+                          key={index}
+                          className={`hover:bg-theme-background/40 transition-colors ${
+                            member.isPrimaryContact ? 'bg-amber-500/5' : ''
+                          }`}
+                        >
+                          {/* Primary Radio */}
+                          <td className="py-2.5 px-3 text-center">
+                            <input
+                              type="radio"
+                              name="primaryContactSelection"
+                              checked={member.isPrimaryContact}
+                              onChange={() => handleSelectPrimaryContact(index)}
+                              className="w-4 h-4 text-theme-primary focus:ring-theme-primary cursor-pointer"
+                              title="Mark as primary contact"
+                            />
+                          </td>
 
-                      <select
-                        value={g.dietaryPreference}
-                        onChange={(e) => {
-                          const val = e.target.value as any;
-                          setModalGuests((prev) =>
-                            prev.map((item, i) => (i === idx ? { ...item, dietaryPreference: val } : item))
-                          );
-                        }}
-                        className="px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
-                      >
-                        <option value="pure_veg">Pure Veg</option>
-                        <option value="jain">Jain</option>
-                        <option value="non_veg">Non-Veg</option>
-                        <option value="vegan">Vegan</option>
-                      </select>
+                          {/* Member Name */}
+                          <td className="py-2 px-3">
+                            <input
+                              type="text"
+                              value={member.name}
+                              onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
+                              placeholder={`Member #${index + 1} Name`}
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-theme-primary"
+                              required
+                            />
+                          </td>
 
-                      <button
-                        type="button"
-                        onClick={() => setModalGuests((prev) => prev.filter((_, i) => i !== idx))}
-                        className="text-theme-text-muted hover:text-rose-600 p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                          {/* Age Category */}
+                          <td className="py-2 px-3">
+                            <select
+                              value={member.ageCategory}
+                              onChange={(e) =>
+                                handleMemberChange(index, 'ageCategory', e.target.value as any)
+                              }
+                              className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs font-medium cursor-pointer"
+                            >
+                              <option value="adult">👤 Adult (18+)</option>
+                              <option value="elder">👴 Elder / Senior</option>
+                              <option value="child">🧒 Child (2-12)</option>
+                              <option value="infant">👶 Infant (&lt;2)</option>
+                            </select>
+                          </td>
+
+                          {/* Generation Level */}
+                          <td className="py-2 px-3">
+                            <select
+                              value={member.generationLevel}
+                              onChange={(e) =>
+                                handleMemberChange(index, 'generationLevel', parseInt(e.target.value) || 3)
+                              }
+                              className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer"
+                            >
+                              <option value={1}>Gen 1: Elders / Grandparents</option>
+                              <option value={2}>Gen 2: Parents / Uncles</option>
+                              <option value={3}>Gen 3: Couple / Siblings / Cousins</option>
+                              <option value={4}>Gen 4: Kids / Grandchildren</option>
+                            </select>
+                          </td>
+
+                          {/* Relation to Bride */}
+                          <td className="py-2 px-3">
+                            <select
+                              value={member.relationToBride}
+                              onChange={(e) =>
+                                handleMemberChange(index, 'relationToBride', e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer text-rose-900"
+                            >
+                              {RELATION_GUIDE_OPTIONS.map((rel) => (
+                                <option key={rel} value={rel}>
+                                  {rel}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+
+                          {/* Relation to Groom */}
+                          <td className="py-2 px-3">
+                            <select
+                              value={member.relationToGroom}
+                              onChange={(e) =>
+                                handleMemberChange(index, 'relationToGroom', e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer text-amber-900"
+                            >
+                              {RELATION_GUIDE_OPTIONS.map((rel) => (
+                                <option key={rel} value={rel}>
+                                  {rel}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+
+                          {/* Dietary Preference */}
+                          <td className="py-2 px-3">
+                            <select
+                              value={member.dietaryPreference}
+                              onChange={(e) =>
+                                handleMemberChange(
+                                  index,
+                                  'dietaryPreference',
+                                  e.target.value as any
+                                )
+                              }
+                              className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer"
+                            >
+                              <option value="pure_veg">Pure Veg</option>
+                              <option value="jain">Jain</option>
+                              <option value="non_veg">Non-Veg</option>
+                              <option value="vegan">Vegan</option>
+                            </select>
+                          </td>
+
+                          {/* Special Needs */}
+                          <td className="py-2 px-3">
+                            <input
+                              type="text"
+                              value={member.specialAssistance || ''}
+                              onChange={(e) =>
+                                handleMemberChange(index, 'specialAssistance', e.target.value)
+                              }
+                              placeholder="e.g. Wheelchair"
+                              className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
+                            />
+                          </td>
+
+                          {/* Delete Row Button */}
+                          <td className="py-2 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMemberRow(index)}
+                              disabled={tabularMembers.length <= 1}
+                              className="text-theme-text-muted hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed p-1 transition-colors"
+                              title="Delete member row"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-2.5 bg-theme-background/60 border-t border-theme-border flex items-center justify-between text-xs text-theme-text-muted">
+                  <span>
+                    Summary:{' '}
+                    <strong className="text-theme-text-main">
+                      {tabularMembers.filter((m) => m.ageCategory === 'adult').length} Adults,{' '}
+                      {tabularMembers.filter((m) => m.ageCategory === 'elder').length} Elders,{' '}
+                      {tabularMembers.filter((m) => m.ageCategory === 'child').length} Children,{' '}
+                      {tabularMembers.filter((m) => m.ageCategory === 'infant').length} Infants
+                    </strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddMemberRow}
+                    className="text-theme-primary font-bold hover:underline"
+                  >
+                    + Add Row
+                  </button>
                 </div>
               </div>
 
+              {/* Special Notes */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Special Notes / Requests</label>
+                <label className="text-xs font-bold text-theme-text-main">
+                  Party Notes & Accommodations Notes
+                </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. VIP close family friends, require wheelchair assistance at wedding entrance"
+                  placeholder="e.g. Close family friends, arriving via late flight from London, prefer lake view room"
                   rows={2}
                   className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm resize-none"
                 />
               </div>
 
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-                >
-                  {editingParty ? 'Save Changes' : 'Add Party'}
-                </button>
+              {/* Modal Footer Actions */}
+              <div className="pt-3 border-t border-theme-border flex items-center justify-between">
+                <span className="text-[11px] text-theme-text-muted">
+                  All guest members automatically sync with accommodations & vehicle seating pillars.
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted hover:bg-theme-border/30"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover transition-all"
+                  >
+                    {editingParty ? 'Save Changes' : 'Save Party & Guests'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
