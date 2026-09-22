@@ -21,7 +21,9 @@ import {
   Sparkles,
   ChevronLeft,
   Tag,
+  Settings,
 } from 'lucide-react';
+import { WeddingSettingsModal } from './WeddingSettingsModal';
 
 interface WeddingCommandCenterProps {
   wedding: Wedding;
@@ -36,6 +38,7 @@ export const WeddingCommandCenter: React.FC<WeddingCommandCenterProps> = ({
 }) => {
   const { setActiveWeddingId } = useWedding();
   const [activeTab, setActiveTab] = useState<PillarId>('dates');
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // Countdown timer state
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
@@ -67,6 +70,45 @@ export const WeddingCommandCenter: React.FC<WeddingCommandCenterProps> = ({
     return () => clearInterval(interval);
   }, [wedding.primaryDate]);
 
+  // Inject custom wedding colors into CSS variables
+  useEffect(() => {
+    const root = document.documentElement;
+    if (wedding.customColors) {
+      if (wedding.customColors.primary) {
+        root.style.setProperty('--theme-primary', wedding.customColors.primary);
+        root.style.setProperty('--theme-primary-hover', wedding.customColors.primary);
+        root.style.setProperty('--theme-primary-light', `${wedding.customColors.primary}20`);
+      }
+      if (wedding.customColors.secondary) {
+        root.style.setProperty('--theme-secondary', wedding.customColors.secondary);
+        root.style.setProperty('--theme-secondary-light', `${wedding.customColors.secondary}25`);
+      }
+      if (wedding.customColors.accent) {
+        root.style.setProperty('--theme-accent', wedding.customColors.accent);
+      }
+      if (wedding.customColors.background) {
+        root.style.setProperty('--theme-background', wedding.customColors.background);
+      }
+      if (wedding.customColors.card) {
+        root.style.setProperty('--theme-card', wedding.customColors.card);
+      }
+      if (wedding.customColors.textMain) {
+        root.style.setProperty('--theme-text-main', wedding.customColors.textMain);
+      }
+    }
+    return () => {
+      root.style.removeProperty('--theme-primary');
+      root.style.removeProperty('--theme-primary-hover');
+      root.style.removeProperty('--theme-primary-light');
+      root.style.removeProperty('--theme-secondary');
+      root.style.removeProperty('--theme-secondary-light');
+      root.style.removeProperty('--theme-accent');
+      root.style.removeProperty('--theme-background');
+      root.style.removeProperty('--theme-card');
+      root.style.removeProperty('--theme-text-main');
+    };
+  }, [wedding.customColors]);
+
   const pillarsConfig = [
     { id: 'dates', label: '1. Dates & Events', icon: Calendar },
     { id: 'family', label: '2. Family Hierarchy', icon: Heart },
@@ -78,7 +120,7 @@ export const WeddingCommandCenter: React.FC<WeddingCommandCenterProps> = ({
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-200">
+    <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-8 py-6 space-y-6 animate-in fade-in duration-200">
       
       {/* Top back navigation & tag manager */}
       <div className="flex items-center justify-between">
@@ -90,15 +132,26 @@ export const WeddingCommandCenter: React.FC<WeddingCommandCenterProps> = ({
           <span>Back to All Weddings Dashboard</span>
         </button>
 
-        {onOpenTagManager && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={onOpenTagManager}
+            onClick={() => setIsSettingsModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-main hover:bg-theme-border/30 transition-colors shadow-2xs"
+            title="Configure wedding theme colors & pair terms"
           >
-            <Tag className="w-3.5 h-3.5 text-theme-primary" />
-            <span>Manage Tags</span>
+            <Settings className="w-3.5 h-3.5 text-theme-primary" />
+            <span>Theme & Settings</span>
           </button>
-        )}
+
+          {onOpenTagManager && (
+            <button
+              onClick={onOpenTagManager}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-main hover:bg-theme-border/30 transition-colors shadow-2xs"
+            >
+              <Tag className="w-3.5 h-3.5 text-theme-primary" />
+              <span>Manage Tags</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Hero Command Center Header */}
@@ -205,6 +258,13 @@ export const WeddingCommandCenter: React.FC<WeddingCommandCenterProps> = ({
         {activeTab === 'seating' && <SeatingChartsManager wedding={wedding} onOpenTagManager={onOpenTagManager} />}
         {activeTab === 'invites' && <EInvitesManager wedding={wedding} onOpenTagManager={onOpenTagManager} />}
       </div>
+
+      {/* Wedding Settings & Custom Theme Modal */}
+      <WeddingSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        wedding={wedding}
+      />
     </div>
   );
 };

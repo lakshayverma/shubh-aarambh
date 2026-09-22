@@ -53,7 +53,7 @@ export const WeddingDashboard: React.FC<WeddingDashboardProps> = ({ onOpenCreate
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in duration-200">
+    <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-8 py-8 space-y-8 animate-in fade-in duration-200">
       
       {/* Hero Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-theme-primary via-theme-accent to-theme-secondary text-white p-6 sm:p-10 shadow-xl relative overflow-hidden">
