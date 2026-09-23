@@ -46,6 +46,13 @@ Every agent operating in this codebase **must strictly adhere** to the following
   - Ceremonies: Mehendi, Haldi, Sangeet, Vivah/Pheras, Reception, Roka, Cocktail.
   - Authentic operational roles (Baraat & Safa Coordinator, Room Key Lead, Shagun Cash Lead, etc.).
 
+### 1.6 Invariant 6: Continuous Documentation & Agent Lifecycle Hooks
+- Every code change in `src/` must be accompanied by updates to the corresponding documentation in `docs/` (`docs/pillar-*/` or `docs/modules/`).
+- **Agent Lifecycle Hooks** (`.agents/hooks.json`):
+  - `PostToolUse`: Automatically runs `scripts/agent-post-tool-hook.cjs` upon `write_to_file` or `replace_file_content` to keep `docs/MODULES_CATALOG.md` in sync.
+  - `Stop`: Runs `scripts/agent-stop-hook.cjs` to ensure 100% catalog synchronization before an agent turn concludes.
+- Always verify with `npm run docs:check` and `npm run docs:update`.
+
 ---
 
 ## 2. Directory Layout & Module Responsibilities

@@ -1,6 +1,6 @@
 # Vivah Planner — Live Module & Section Catalog
 
-> **Generated**: `2026-09-23 05:38:52 UTC`  
+> **Generated**: `2026-09-23 17:16:07 UTC`  
 > **Automated Hook**: `scripts/update-docs.cjs`  
 > **Total Measured Modules**: `12` | **Total Source Files**: `32` | **Total Lines of Code**: `16,465`  
 
