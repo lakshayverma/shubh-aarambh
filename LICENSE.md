@@ -40,12 +40,21 @@ The Author's original ideas, workflows, data models, ceremony management paradig
 ### 4. Prohibition on AI & Machine Learning Training
 You may **NOT** use, ingest, crawl, scrape, parse, tokenize, or feed the Software, its source code, documentation, UI designs, data schemas, or underlying Conceptual System—in whole or in part—into any training dataset, pipeline, or service to train, fine-tune, evaluate, validate, prompt-tune, distill, or optimize any artificial intelligence (AI), machine learning (ML), deep learning model, neural network, Large Language Model (LLM), or automated software generation tool without express prior written consent from the Author.
 
-### 5. Zero Liability Re-affirmed
+### 5. AI Assistance Notice & Good-Faith Prior Art / Takedown Protocol
+This software, including its architecture, codebase, and conceptual workflows, was conceptualized, designed, and engineered with the assistance of **Google Antigravity** (advanced agentic AI pair programming).
+
+While created independently and in good faith, the Author acknowledges the vast landscape of software design and recognizes that certain workflows, layout patterns, or system concepts may unintentionally resemble or share similarities with pre-existing, proprietary, or unknown third-party systems.
+
+If you are an intellectual property holder and believe that any portion of this Software or its Conceptual System inadvertently infringes upon, copies, or replicates your pre-existing proprietary, copyrighted, or patented work:
+1. **Good-Faith Outreach**: You are invited and encouraged to reach out directly to the Author in good faith to resolve the matter amicably.
+2. **Review & Takedown Procedure**: Please provide verifiable documentation, registration details, or demonstration of your prior work. Upon receipt of valid documentation, the Author will review the material in good faith and take appropriate corrective action promptly, including modifying the contested workflow, adding formal attribution, or removing / taking down the relevant code and conceptual elements.
+
+### 6. Zero Liability Re-affirmed
 The Warranty Disclaimer and Limitation of Liability stated in the MIT License above apply unconditionally to all users, whether non-commercial or commercial. Charging a fee or issuing a license does not expand, waive, or alter the Author's absolute zero-liability protection against any damages, event mishaps, or financial claims.
 
 ---
 
-### Commercial Inquiries
-For commercial licensing, client deployments, or permission requests, contact:
+### Inquiries & Notices
+For commercial licensing, enterprise deployments, or good-faith prior art and takedown notices, contact:
 - **Author**: Lakshay Verma
 - **Repository**: https://github.com/lakshayverma/wedding-planner
