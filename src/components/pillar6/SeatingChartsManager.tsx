@@ -64,7 +64,7 @@ interface TableNodeData {
   onUnseatGuest: (elemId: string, seatNumber: number) => void;
 }
 
-const TableNodeComponent: React.FC<{ data: TableNodeData }> = ({ data }) => {
+const TableNodeComponent: React.FC<{ data: TableNodeData }> = React.memo(({ data }) => {
   const { element, assignedSeats, guestsMap, onEdit, onClearSeats, onDelete, onUnseatGuest } = data;
   const capacity = element.capacity || 0;
   const occupiedCount = assignedSeats.length;
@@ -530,7 +530,7 @@ const TableNodeComponent: React.FC<{ data: TableNodeData }> = ({ data }) => {
       </div>
     </div>
   );
-};
+});
 
 // ---------------------------------------------------------------------------
 // Custom Guest Node for React Flow
@@ -543,7 +543,7 @@ interface GuestNodeData {
   onUnseat: (guestId: string) => void;
 }
 
-const GuestNodeComponent: React.FC<{ data: GuestNodeData }> = ({ data }) => {
+const GuestNodeComponent: React.FC<{ data: GuestNodeData }> = React.memo(({ data }) => {
   const { guest, party, assignment, onUnseat } = data;
   const isLadkewale = party?.side === 'ladkewale';
   const isLadkiwale = party?.side === 'ladkiwale';
@@ -622,12 +622,88 @@ const GuestNodeComponent: React.FC<{ data: GuestNodeData }> = ({ data }) => {
       />
     </div>
   );
-};
+});
 
 const nodeTypes = {
   tableNode: TableNodeComponent,
   guestNode: GuestNodeComponent,
 };
+
+// ---------------------------------------------------------------------------
+// Memoized Draggable Guest Tray Item
+// ---------------------------------------------------------------------------
+
+interface GuestTrayItemProps {
+  guest: Guest;
+  party?: GuestParty;
+  assigned?: { tableName: string; elementId: string; seatNumber: number };
+}
+
+const GuestTrayItem: React.FC<GuestTrayItemProps> = React.memo(({ guest, party, assigned }) => {
+  return (
+    <div
+      draggable={true}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/reactflow-guest', guest.id);
+        e.dataTransfer.setData('text/plain', guest.id);
+      }}
+      className={`p-2 rounded-xl border text-xs cursor-grab active:cursor-grabbing transition-all select-none hover:scale-[1.02] shadow-2xs ${
+        assigned
+          ? 'bg-emerald-500/5 border-emerald-300/80 text-emerald-950'
+          : 'bg-theme-background border-theme-border hover:border-theme-primary text-theme-text-main'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-1">
+        <div className="font-bold text-[11px] truncate flex items-center gap-1">
+          <span>
+            {guest.ageCategory === 'elder'
+              ? '👴'
+              : guest.ageCategory === 'child'
+              ? '🧒'
+              : guest.ageCategory === 'infant'
+              ? '👶'
+              : '👤'}
+          </span>
+          <span className="truncate">{guest.name}</span>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {assigned ? (
+            <span
+              className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"
+              title={`Seated: ${assigned.tableName} (Seat ${assigned.seatNumber})`}
+            />
+          ) : (
+            <span className="w-2 h-2 rounded-full bg-stone-300 shrink-0" title="Unseated" />
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-[10px] text-theme-text-muted mt-1">
+        <span className="truncate">{party?.partyName || 'Family'}</span>
+        {party?.side && (
+          <span
+            className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full capitalize ${
+              party.side === 'ladkewale'
+                ? 'bg-amber-100 text-amber-800'
+                : party.side === 'ladkiwale'
+                ? 'bg-rose-100 text-rose-800'
+                : 'bg-stone-100 text-stone-700'
+            }`}
+          >
+            {party.side === 'ladkewale' ? '👔 Groom' : party.side === 'ladkiwale' ? '👗 Bride' : 'Mutual'}
+          </span>
+        )}
+      </div>
+
+      {assigned && (
+        <div className="text-[9px] font-semibold text-emerald-700 mt-1 truncate">
+          {assigned.tableName} &bull; Seat #{assigned.seatNumber}
+        </div>
+      )}
+    </div>
+  );
+});
 
 // ---------------------------------------------------------------------------
 // Main Seating Charts Canvas Component (Inside ReactFlowProvider)
@@ -727,36 +803,48 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
     return map;
   }, [parties]);
 
+  // Fast RSVP Confirmed Set lookup for current event
+  const confirmedGuestIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!rsvps) return set;
+    for (const r of rsvps) {
+      if (r.eventId === currentEventId && r.status === 'confirmed') {
+        if (r.guestId) {
+          set.add(r.guestId);
+        } else if (r.partyId && guests) {
+          // If whole party confirmed, mark all members of party
+          for (const g of guests) {
+            if (g.partyId === r.partyId) set.add(g.id);
+          }
+        }
+      }
+    }
+    return set;
+  }, [rsvps, currentEventId, guests]);
+
   // Filtered guest list for left tray
   const filteredTrayGuests = useMemo(() => {
     if (!guests) return [];
+    const searchLower = guestSearch.trim().toLowerCase();
+
     return guests.filter((g) => {
       const party = partiesMap.get(g.partyId);
-      const matchesSearch =
-        g.name.toLowerCase().includes(guestSearch.toLowerCase()) ||
-        (party?.partyName && party.partyName.toLowerCase().includes(guestSearch.toLowerCase()));
+      if (searchLower) {
+        const matchesName = g.name.toLowerCase().includes(searchLower);
+        const matchesParty = party?.partyName && party.partyName.toLowerCase().includes(searchLower);
+        if (!matchesName && !matchesParty) return false;
+      }
 
       const isAssigned = guestAssignmentMap.has(g.id);
-      const isConfirmed = rsvps?.some(
-        (r) =>
-          (r.guestId === g.id && r.eventId === currentEventId && r.status === 'confirmed') ||
-          (r.partyId === g.partyId && !r.guestId && r.eventId === currentEventId && r.status === 'confirmed')
-      );
+      if (guestTrayFilter === 'assigned' && !isAssigned) return false;
+      if (guestTrayFilter === 'unassigned' && isAssigned) return false;
+      if (guestTrayFilter === 'confirmed' && !confirmedGuestIds.has(g.id)) return false;
 
-      const matchesFilter =
-        guestTrayFilter === 'all'
-          ? true
-          : guestTrayFilter === 'assigned'
-          ? isAssigned
-          : guestTrayFilter === 'confirmed'
-          ? isConfirmed
-          : !isAssigned;
+      if (sideFilter !== 'all' && party?.side !== sideFilter) return false;
 
-      const matchesSide = sideFilter === 'all' ? true : party?.side === sideFilter;
-
-      return matchesSearch && matchesFilter && matchesSide;
+      return true;
     });
-  }, [guests, partiesMap, guestSearch, guestTrayFilter, sideFilter, guestAssignmentMap, rsvps, currentEventId]);
+  }, [guests, partiesMap, guestSearch, guestTrayFilter, sideFilter, guestAssignmentMap, confirmedGuestIds]);
 
   // Ensure Plan Record Exists
   const ensurePlanExists = async (): Promise<string> => {
@@ -841,35 +929,24 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
     await assignGuestToTableSeat(element.id, vacantSeatNum, guestId);
   };
 
-  const handleUnseatGuest = async (elementId: string, seatNumber: number) => {
-    const allAssignments = await db.tableSeatAssignments.toArray();
-    const target = allAssignments.find(
-      (s) => s.elementId === elementId && s.seatNumber === seatNumber
-    );
-    if (target) {
-      await db.tableSeatAssignments.delete(target.id);
-    }
-  };
+  // Stable handlers for node data
+  const handleEditElement = useCallback((e: FloorPlanElement) => {
+    setEditingElement(e);
+    setEditLabel(e.label);
+    setEditCapacity(e.capacity);
+    setIsEditElementOpen(true);
+  }, []);
 
-  const handleUnseatGuestById = async (guestId: string) => {
-    const planElemIds = new Set(planElements.map((e) => e.id));
-    const allAssignments = await db.tableSeatAssignments.toArray();
-    const target = allAssignments.find((s) => planElemIds.has(s.elementId) && s.guestId === guestId);
-    if (target) {
-      await db.tableSeatAssignments.delete(target.id);
-    }
-  };
-
-  const handleClearAllTableSeats = async (elementId: string) => {
+  const handleClearAllTableSeats = useCallback(async (elementId: string) => {
     if (confirm('Clear all seated guests from this table?')) {
       const allAssignments = await db.tableSeatAssignments.where('elementId').equals(elementId).toArray();
       for (const a of allAssignments) {
         await db.tableSeatAssignments.delete(a.id);
       }
     }
-  };
+  }, []);
 
-  const handleDeleteElement = async (id: string) => {
+  const handleDeleteElement = useCallback(async (id: string) => {
     if (confirm('Delete this venue element and remove all assigned seats?')) {
       await db.transaction('rw', [db.floorPlanElements, db.tableSeatAssignments], async () => {
         await db.floorPlanElements.delete(id);
@@ -877,7 +954,26 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
       });
       setIsEditElementOpen(false);
     }
-  };
+  }, []);
+
+  const handleUnseatGuest = useCallback(async (elementId: string, seatNumber: number) => {
+    const allAssignments = await db.tableSeatAssignments.toArray();
+    const target = allAssignments.find(
+      (s) => s.elementId === elementId && s.seatNumber === seatNumber
+    );
+    if (target) {
+      await db.tableSeatAssignments.delete(target.id);
+    }
+  }, []);
+
+  const handleUnseatGuestById = useCallback(async (guestId: string) => {
+    const planElemIds = new Set(planElements.map((e) => e.id));
+    const allAssignments = await db.tableSeatAssignments.toArray();
+    const target = allAssignments.find((s) => planElemIds.has(s.elementId) && s.guestId === guestId);
+    if (target) {
+      await db.tableSeatAssignments.delete(target.id);
+    }
+  }, [planElements]);
 
   // Convert elements and assignments to React Flow Nodes & Edges
   const { nodes, edges } = useMemo(() => {
@@ -897,12 +993,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
           assignedSeats: elemSeats,
           guestsMap,
           partiesMap,
-          onEdit: (e: FloorPlanElement) => {
-            setEditingElement(e);
-            setEditLabel(e.label);
-            setEditCapacity(e.capacity);
-            setIsEditElementOpen(true);
-          },
+          onEdit: handleEditElement,
           onClearSeats: handleClearAllTableSeats,
           onDelete: handleDeleteElement,
           onUnseatGuest: handleUnseatGuest,
@@ -950,7 +1041,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
           sourceHandle: `seat-${seat.seatNumber}`,
           target: guestNodeId,
           targetHandle: `guest-target-${guest.id}`,
-          animated: true,
+          animated: false,
           style: {
             stroke:
               party?.side === 'ladkewale'
@@ -958,7 +1049,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
                 : party?.side === 'ladkiwale'
                 ? '#BE185D'
                 : '#7B1113',
-            strokeWidth: 2.5,
+            strokeWidth: 2,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
@@ -969,7 +1060,17 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
     }
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [planElements, seatAssignments, guestsMap, partiesMap]);
+  }, [
+    planElements,
+    seatAssignments,
+    guestsMap,
+    partiesMap,
+    handleEditElement,
+    handleClearAllTableSeats,
+    handleDeleteElement,
+    handleUnseatGuest,
+    handleUnseatGuestById,
+  ]);
 
   // Proximity Snap on Node Drag Stop
   const onNodeDragStop = useCallback(
@@ -1445,68 +1546,12 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
               const party = partiesMap.get(g.partyId);
 
               return (
-                <div
+                <GuestTrayItem
                   key={g.id}
-                  draggable={true}
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('application/reactflow-guest', g.id);
-                    e.dataTransfer.setData('text/plain', g.id);
-                  }}
-                  className={`p-2 rounded-xl border text-xs cursor-grab active:cursor-grabbing transition-all select-none hover:scale-[1.02] shadow-2xs ${
-                    assigned
-                      ? 'bg-emerald-500/5 border-emerald-300/80 text-emerald-950'
-                      : 'bg-theme-background border-theme-border hover:border-theme-primary text-theme-text-main'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <div className="font-bold text-[11px] truncate flex items-center gap-1">
-                      <span>
-                        {g.ageCategory === 'elder'
-                          ? '👴'
-                          : g.ageCategory === 'child'
-                          ? '🧒'
-                          : g.ageCategory === 'infant'
-                          ? '👶'
-                          : '👤'}
-                      </span>
-                      <span className="truncate">{g.name}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      {assigned ? (
-                        <span
-                          className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"
-                          title={`Seated: ${assigned.tableName} (Seat ${assigned.seatNumber})`}
-                        />
-                      ) : (
-                        <span className="w-2 h-2 rounded-full bg-stone-300 shrink-0" title="Unseated" />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] text-theme-text-muted mt-1">
-                    <span className="truncate">{party?.partyName || 'Family'}</span>
-                    {party?.side && (
-                      <span
-                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full capitalize ${
-                          party.side === 'ladkewale'
-                            ? 'bg-amber-100 text-amber-800'
-                            : party.side === 'ladkiwale'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-stone-100 text-stone-700'
-                        }`}
-                      >
-                        {party.side === 'ladkewale' ? '👔 Groom' : party.side === 'ladkiwale' ? '👗 Bride' : 'Mutual'}
-                      </span>
-                    )}
-                  </div>
-
-                  {assigned && (
-                    <div className="text-[9px] font-semibold text-emerald-700 mt-1 truncate">
-                      {assigned.tableName} &bull; Seat #{assigned.seatNumber}
-                    </div>
-                  )}
-                </div>
+                  guest={g}
+                  party={party}
+                  assigned={assigned}
+                />
               );
             })}
 
@@ -1555,6 +1600,10 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
               onConnect={onConnect}
               connectionMode={ConnectionMode.Loose}
               fitView
+              onlyRenderVisibleElements={true}
+              elevateNodesOnSelect={false}
+              minZoom={0.2}
+              maxZoom={2}
               className="bg-[radial-gradient(#cbd5e1_1.2px,transparent_1.2px)] [background-size:24px_24px]"
             >
               <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="var(--theme-border)" />
