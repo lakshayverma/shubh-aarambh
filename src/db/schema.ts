@@ -242,7 +242,23 @@ export interface EInvite {
     borderColor?: string;
     patternColor?: string;
   };
-  backgroundTheme?: 'damask' | 'mandala' | 'floral' | 'imperial_gradient' | 'clean_linen' | 'none';
+  backgroundTheme?:
+    | 'damask'
+    | 'mandala'
+    | 'floral'
+    | 'imperial_gradient'
+    | 'clean_linen'
+    | 'jaali_lattice'
+    | 'paisley_kalka'
+    | 'peacock_feather'
+    | 'marigold_garland'
+    | 'golden_stars'
+    | 'royal_stripes'
+    | 'temple_border'
+    | 'ivory_silk'
+    | 'none'
+    | string;
+  iconOption?: string;
   rsvpPhone?: string;
   googleMapsUrl?: string;
   createdAt: number;

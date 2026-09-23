@@ -99,11 +99,46 @@ interface CustomToggleProps {
 
 ### 2.4 `<CustomSelect>`
 
-A styled HTML select wrapper ensuring consistent typography, border radius, and color harmony with the dynamic CSS theme variables (`--theme-border`, `--theme-card`, `--theme-text-main`).
+A custom-rendered interactive dropdown component replacing native browser `<select>` elements across all pillars. It provides:
+- **Instant Search Filtering**: Optional search query input with auto-focus for fast typing in long lists (automatically enabled if >6 options or via `searchable={true}`).
+- **Rich Visual Options**: Supports Lucide icons, badges, descriptions, and multi-dot color swatches (`colorSwatch`).
+- **Prefix Icon Support**: Supports a leading `icon` prop inside the trigger button for compact action bars and filters.
+- **Sizing Flexibility**: Supports both standard `md` (drawers and forms) and compact `sm` (table rows, pagination controls, inline editing).
+- **Light Theme Harmony**: Styled with warm, crisp light cultural aesthetics (`bg-white`, `border-stone-200`, `text-stone-800`, `shadow-2xl` menu), avoiding unreadable OS dark theme overrides.
+
+#### Component Signature
+```typescript
+export interface SelectOption {
+  value: string;
+  label: string;
+  description?: string;
+  icon?: React.ReactNode;
+  badge?: string;
+  colorSwatch?: string | string[];
+  group?: string;
+}
+
+export interface CustomSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  placeholder?: string;
+  label?: string;
+  disabled?: boolean;
+  className?: string;
+  searchable?: boolean;
+  size?: 'sm' | 'md';
+  error?: string;
+  icon?: React.ReactNode;
+}
+```
 
 ---
 
 ## 3. Design Guidelines & Usage Rules
 1. **Never create ad-hoc slide-in panels or backdrop divs** in pillar components. Always import `<NestedScreen>`.
 2. **Always specify `level={2}`** if opening a drawer or modal from inside an existing drawer.
-3. **Do not embed business logic** inside `src/components/common/`.
+3. **Always use `<CustomSelect>`** instead of native `<select>` tags for all dropdowns, filters, and selectors.
+4. **Light Theme Modal Standard**: Modals, drawers, and popovers maintain crisp light cultural aesthetics; Tailwind `darkMode: 'class'` is enforced so system `prefers-color-scheme: dark` cannot distort form readability.
+5. **Do not embed business logic** inside `src/components/common/`.
+

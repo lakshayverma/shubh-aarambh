@@ -44,6 +44,7 @@ import {
   Download,
 } from 'lucide-react';
 import { NestedScreen } from '../common/NestedScreen';
+import { CustomSelect } from '../common/CustomSelect';
 
 interface FamilyManagerProps {
   wedding: Wedding;
@@ -1124,14 +1125,14 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-bold text-theme-text-main">Wedding Side *</label>
-              <select
+              <CustomSelect
                 value={side}
-                onChange={(e) => setSide(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-              >
-                <option value="ladkewale">{groomTerm}</option>
-                <option value="ladkiwale">{brideTerm}</option>
-              </select>
+                onChange={(val) => setSide(val as any)}
+                options={[
+                  { value: 'ladkewale', label: groomTerm },
+                  { value: 'ladkiwale', label: brideTerm },
+                ]}
+              />
             </div>
 
             <div className="space-y-1">
@@ -1150,16 +1151,16 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-bold text-theme-text-main">Generation Tier</label>
-              <select
-                value={generationLevel}
-                onChange={(e) => setGenerationLevel(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-              >
-                <option value={1}>Gen 1: Grandparents & Elders</option>
-                <option value={2}>Gen 2: Parents, Uncles & Aunts</option>
-                <option value={3}>Gen 3: Couple, Siblings, Cousins</option>
-                <option value={4}>Gen 4: Children & Grandchildren</option>
-              </select>
+              <CustomSelect
+                value={String(generationLevel)}
+                onChange={(val) => setGenerationLevel(Number(val))}
+                options={[
+                  { value: '1', label: 'Gen 1: Grandparents & Elders' },
+                  { value: '2', label: 'Gen 2: Parents, Uncles & Aunts' },
+                  { value: '3', label: 'Gen 3: Couple, Siblings, Cousins' },
+                  { value: '4', label: 'Gen 4: Children & Grandchildren' },
+                ]}
+              />
             </div>
 
             <div className="space-y-1">

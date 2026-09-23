@@ -26,7 +26,15 @@ import {
   Sliders,
   ArrowLeft,
   CheckCircle2,
+  Flame,
+  Heart,
+  Music,
+  Wine,
+  Sun,
+  Gem,
+  Star,
 } from 'lucide-react';
+import { CustomSelect } from '../common/CustomSelect';
 
 interface EInvitesManagerProps {
   wedding: Wedding;
@@ -142,7 +150,7 @@ export const hexAndOpacityToRgba = (hexColor: string, opacity: number): string =
   return hexColor;
 };
 
-// Background Themes / Patterns with enhanced contrast and RGBA support
+// 14 Curated Indian Wedding Background Patterns with RGBA Watermark support
 export const BACKGROUND_PATTERNS: {
   id: NonNullable<EInvite['backgroundTheme']>;
   name: string;
@@ -185,11 +193,82 @@ export const BACKGROUND_PATTERNS: {
     backgroundSize: '24px 24px',
   },
   {
+    id: 'jaali_lattice',
+    name: 'Mughal Geometric Jaali',
+    css: (color) =>
+      `radial-gradient(circle at 50% 50%, transparent 20%, ${parseColorToRgba(color, 0.8)} 21%, ${parseColorToRgba(color, 0.8)} 25%, transparent 26%), repeating-linear-gradient(45deg, transparent, transparent 15px, ${parseColorToRgba(color, 0.7)} 15px, ${parseColorToRgba(color, 0.7)} 17px)`,
+    backgroundSize: '36px 36px',
+  },
+  {
+    id: 'paisley_kalka',
+    name: 'Royal Paisley & Kalka',
+    css: (color) =>
+      `radial-gradient(ellipse at 50% 50%, ${parseColorToRgba(color, 1.2)} 15%, transparent 16%), radial-gradient(circle at 80% 20%, ${parseColorToRgba(color, 0.9)} 8%, transparent 9%), radial-gradient(circle at 20% 80%, ${parseColorToRgba(color, 0.9)} 8%, transparent 9%)`,
+    backgroundSize: '48px 48px',
+  },
+  {
+    id: 'peacock_feather',
+    name: 'Regal Peacock Plume',
+    css: (color) =>
+      `radial-gradient(circle at 50% 0%, ${parseColorToRgba(color, 1.3)} 18%, ${parseColorToRgba(color, 0.7)} 35%, transparent 55%), radial-gradient(circle at 50% 100%, ${parseColorToRgba(color, 1.1)} 18%, transparent 55%)`,
+    backgroundSize: '50px 50px',
+  },
+  {
+    id: 'marigold_garland',
+    name: 'Festive Marigold Garland',
+    css: (color) =>
+      `radial-gradient(circle, ${parseColorToRgba(color, 1.4)} 12%, transparent 13%), radial-gradient(circle at 50% 0%, ${parseColorToRgba(color, 1.0)} 10%, transparent 11%), radial-gradient(circle at 50% 100%, ${parseColorToRgba(color, 1.0)} 10%, transparent 11%)`,
+    backgroundSize: '28px 28px',
+  },
+  {
+    id: 'golden_stars',
+    name: 'Shubh Nakshatra Stars',
+    css: (color) =>
+      `radial-gradient(1px 1px at 20px 30px, ${parseColorToRgba(color, 1.6)}, rgba(0,0,0,0)), radial-gradient(1.5px 1.5px at 40px 70px, ${parseColorToRgba(color, 1.5)}, rgba(0,0,0,0)), radial-gradient(2px 2px at 50px 160px, ${parseColorToRgba(color, 1.4)}, rgba(0,0,0,0)), radial-gradient(1.5px 1.5px at 90px 40px, ${parseColorToRgba(color, 1.5)}, rgba(0,0,0,0))`,
+    backgroundSize: '100px 100px',
+  },
+  {
+    id: 'royal_stripes',
+    name: 'Rajasthani Leheriya',
+    css: (color) =>
+      `repeating-linear-gradient(135deg, ${parseColorToRgba(color, 0.9)} 0px, ${parseColorToRgba(color, 0.9)} 2px, transparent 2px, transparent 18px), repeating-linear-gradient(45deg, ${parseColorToRgba(color, 0.4)} 0px, ${parseColorToRgba(color, 0.4)} 1px, transparent 1px, transparent 18px)`,
+    backgroundSize: '26px 26px',
+  },
+  {
+    id: 'temple_border',
+    name: 'Temple Kanjeevaram Arch',
+    css: (color) =>
+      `repeating-linear-gradient(0deg, transparent, transparent 38px, ${parseColorToRgba(color, 1.2)} 38px, ${parseColorToRgba(color, 1.2)} 40px), repeating-linear-gradient(90deg, transparent, transparent 38px, ${parseColorToRgba(color, 1.2)} 38px, ${parseColorToRgba(color, 1.2)} 40px), radial-gradient(circle at 50% 50%, ${parseColorToRgba(color, 1.0)} 10%, transparent 11%)`,
+    backgroundSize: '40px 40px',
+  },
+  {
+    id: 'ivory_silk',
+    name: 'Tussar Raw Silk Weave',
+    css: (color) =>
+      `repeating-linear-gradient(0deg, ${parseColorToRgba(color, 0.6)} 0px, ${parseColorToRgba(color, 0.6)} 1px, transparent 1px, transparent 6px), repeating-linear-gradient(90deg, ${parseColorToRgba(color, 0.6)} 0px, ${parseColorToRgba(color, 0.6)} 1px, transparent 1px, transparent 6px)`,
+    backgroundSize: '12px 12px',
+  },
+  {
     id: 'none',
     name: 'Solid Pure Canvas',
     css: () => 'none',
     backgroundSize: 'auto',
   },
+];
+
+// Auspicious Invitation Motif / Header Icons
+export const INVITATION_ICONS = [
+  { id: 'crown', name: 'Royal Crown (Raj Tilak)', icon: Crown },
+  { id: 'sparkles', name: 'Shubh Sparkles (Auspicious Aura)', icon: Sparkles },
+  { id: 'flower2', name: 'Sacred Lotus (Padma Bloom)', icon: Flower2 },
+  { id: 'flame', name: 'Agni Kund (Sacred Pheras)', icon: Flame },
+  { id: 'heart', name: 'Prem Bandhan (Two Hearts)', icon: Heart },
+  { id: 'music', name: 'Shehnai & Dhol (Sangeet Beats)', icon: Music },
+  { id: 'wine', name: 'Celebration Toast (Cocktail Night)', icon: Wine },
+  { id: 'sun', name: 'Surya Dev (Shubh Muhurat)', icon: Sun },
+  { id: 'compass', name: 'Sacred Directions (Vastu & Journey)', icon: Compass },
+  { id: 'gem', name: 'Ratna / Jewel (Eternal Bond)', icon: Gem },
+  { id: 'star', name: 'Dhruva Tara (North Star)', icon: Star },
 ];
 
 export const INVITE_TYPE_CONFIG: Record<
@@ -320,6 +399,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
   const [backgroundTheme, setBackgroundTheme] = useState<
     NonNullable<EInvite['backgroundTheme']>
   >('damask');
+  const [iconOption, setIconOption] = useState<string>('crown');
 
   const [isExportingPng, setIsExportingPng] = useState(false);
 
@@ -336,6 +416,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     setTitle(inv.title);
     setSlug(inv.slug);
     setInviteType(inv.inviteType || 'whole_wedding');
+    setIconOption(inv.iconOption || 'crown');
     setTemplateId(
       inv.templateId ||
         (inv.templateStyle === 'floral_mughal'
@@ -521,6 +602,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
           }
         : undefined,
       backgroundTheme,
+      iconOption,
       rsvpPhone: rsvpPhone.trim() || undefined,
       googleMapsUrl: googleMapsUrl.trim() || undefined,
       createdAt: Date.now(),
@@ -813,38 +895,22 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
             </div>
 
             {/* 1.1 Cohort Audience / Invitation Type */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-theme-primary" />
-                <span>1. Invitation Cohort Audience</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {(Object.keys(INVITE_TYPE_CONFIG) as Array<EInvite['inviteType']>).map((typeKey) => {
+            <div className="space-y-1">
+              <CustomSelect
+                label="1. Invitation Cohort Audience"
+                value={inviteType}
+                onChange={(val) => handleInviteTypeSelect(val as EInvite['inviteType'])}
+                options={(Object.keys(INVITE_TYPE_CONFIG) as Array<EInvite['inviteType']>).map((typeKey) => {
                   const cfg = INVITE_TYPE_CONFIG[typeKey];
-                  const isSelected = inviteType === typeKey;
-
-                  return (
-                    <button
-                      type="button"
-                      key={typeKey}
-                      onClick={() => handleInviteTypeSelect(typeKey)}
-                      className={`p-2.5 rounded-2xl border text-left transition-all ${
-                        isSelected
-                          ? 'border-theme-primary bg-theme-primary-light/40 shadow-xs ring-1 ring-theme-primary/30'
-                          : 'border-theme-border bg-theme-background hover:bg-theme-border/20'
-                      }`}
-                    >
-                      <div className="font-bold text-xs text-theme-text-main flex items-center justify-between">
-                        <span>{cfg.label}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-theme-primary" />}
-                      </div>
-                      <div className="text-[10px] text-theme-text-muted mt-0.5 line-clamp-2">
-                        {cfg.description}
-                      </div>
-                    </button>
-                  );
+                  return {
+                    value: typeKey,
+                    label: cfg.label,
+                    description: cfg.description,
+                    icon: <Mail className="w-3.5 h-3.5 text-theme-primary" />,
+                    badge: `${cfg.defaultEventTypes.length} types`,
+                  };
                 })}
-              </div>
+              />
             </div>
 
             {/* 1.2 Included Ceremonies & Events (Placed directly below Cohort as requested) */}
@@ -1018,59 +1084,63 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
             </div>
 
             {/* 2.1 Design Template (4 Aesthetic Styles) */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
-                <Palette className="w-3.5 h-3.5 text-theme-secondary" />
-                <span>1. Visual Design Template</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {(
+            <div className="space-y-1">
+              <CustomSelect
+                label="1. Visual Design Template"
+                value={templateId}
+                onChange={(val) => {
+                  const tId = val as 'royal_palace' | 'mughal_floral' | 'regal_mandala' | 'contemporary_ivory';
+                  setTemplateId(tId);
+                  if (!useCustomTheme) {
+                    const cfg = TEMPLATE_CONFIG[tId];
+                    if (cfg) {
+                      setThemePrimary(cfg.primaryText);
+                      setThemeSecondary(cfg.accentColor);
+                      setThemeBorderColor(cfg.borderColor);
+                      setThemeCardBg(cfg.cardBg);
+                    }
+                  }
+                }}
+                options={(
                   Object.keys(TEMPLATE_CONFIG) as Array<
                     'royal_palace' | 'mughal_floral' | 'regal_mandala' | 'contemporary_ivory'
                   >
                 ).map((tmplKey) => {
                   const cfg = TEMPLATE_CONFIG[tmplKey];
-                  const isSelected = templateId === tmplKey;
                   const TmplIcon = cfg.icon;
-
-                  return (
-                    <button
-                      type="button"
-                      key={tmplKey}
-                      onClick={() => {
-                        setTemplateId(tmplKey);
-                        if (!useCustomTheme) {
-                          setThemePrimary(cfg.primaryText);
-                          setThemeSecondary(cfg.accentColor);
-                          setThemeBorderColor(cfg.borderColor);
-                          setThemeCardBg(cfg.cardBg);
-                        }
-                      }}
-                      className={`p-2.5 rounded-2xl border text-left transition-all ${
-                        isSelected
-                          ? 'border-theme-primary bg-theme-primary-light/40 shadow-xs ring-1 ring-theme-primary/30'
-                          : 'border-theme-border bg-theme-background hover:bg-theme-border/20'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 font-bold text-xs text-theme-text-main">
-                        <TmplIcon className="w-3.5 h-3.5" style={{ color: cfg.accentColor }} />
-                        <span className="truncate">{cfg.name}</span>
-                      </div>
-                      <div className="text-[10px] text-theme-text-muted mt-0.5 line-clamp-2">
-                        {cfg.description}
-                      </div>
-                    </button>
-                  );
+                  return {
+                    value: tmplKey,
+                    label: cfg.name,
+                    description: cfg.description,
+                    icon: <TmplIcon className="w-4 h-4" style={{ color: cfg.accentColor }} />,
+                  };
                 })}
-              </div>
+              />
             </div>
 
-            {/* 2.2 Cultural Color Palettes */}
+            {/* 2.2 Auspicious Header Motif Icon */}
+            <div className="space-y-1">
+              <CustomSelect
+                label="2. Auspicious Motif / Header Icon"
+                value={iconOption}
+                onChange={(val) => setIconOption(val)}
+                options={INVITATION_ICONS.map((ico) => {
+                  const IcoComp = ico.icon;
+                  return {
+                    value: ico.id,
+                    label: ico.name,
+                    icon: <IcoComp className="w-4 h-4 text-theme-primary" />,
+                  };
+                })}
+              />
+            </div>
+
+            {/* 2.3 Cultural Color Palettes */}
             <div className="space-y-2.5 p-3.5 rounded-2xl border border-theme-border bg-theme-background/60">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5 text-theme-primary" />
-                  <span>2. Cultural Color Palettes</span>
+                  <span>3. Cultural Color Palette</span>
                 </label>
                 <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
                   <input
@@ -1083,39 +1153,19 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
                 </label>
               </div>
 
-              {/* Pre-defined Cultural Palettes */}
-              <div className="grid grid-cols-2 gap-2">
-                {COLOR_PALETTES.map((pal) => (
-                  <button
-                    type="button"
-                    key={pal.id}
-                    onClick={() => applyColorPalette(pal)}
-                    className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                      useCustomTheme && themePrimary === pal.primary
-                        ? 'border-theme-primary bg-theme-card shadow-xs ring-1 ring-theme-primary/30'
-                        : 'border-theme-border bg-theme-card/60 hover:bg-theme-card'
-                    }`}
-                  >
-                    <div className="flex -space-x-1 shrink-0">
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
-                        style={{ backgroundColor: pal.primary }}
-                      />
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
-                        style={{ backgroundColor: pal.secondary }}
-                      />
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white shadow-2xs"
-                        style={{ backgroundColor: pal.borderColor }}
-                      />
-                    </div>
-                    <span className="text-[11px] font-semibold text-theme-text-main truncate">
-                      {pal.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {/* Pre-defined Cultural Palettes via CustomSelect */}
+              <CustomSelect
+                value={COLOR_PALETTES.find((p) => p.primary === themePrimary)?.id || 'custom'}
+                onChange={(val) => {
+                  const found = COLOR_PALETTES.find((p) => p.id === val);
+                  if (found) applyColorPalette(found);
+                }}
+                options={COLOR_PALETTES.map((pal) => ({
+                  value: pal.id,
+                  label: pal.name,
+                  colorSwatch: [pal.primary, pal.secondary, pal.borderColor],
+                }))}
+              />
 
               {/* Granular Color Pickers (Visible when custom theme enabled) */}
               {useCustomTheme && (
@@ -1203,34 +1253,22 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
               )}
             </div>
 
-            {/* 2.3 Background Watermark Pattern */}
+            {/* 2.4 Background Watermark Pattern (14 Patterns) */}
             <div className="space-y-3 p-3.5 rounded-2xl border border-theme-border bg-theme-background/60">
-              <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>3. Background Watermark Pattern</span>
-              </label>
-
-              <div className="grid grid-cols-2 gap-2">
-                {BACKGROUND_PATTERNS.map((pat) => (
-                  <button
-                    type="button"
-                    key={pat.id}
-                    onClick={() => setBackgroundTheme(pat.id)}
-                    className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
-                      backgroundTheme === pat.id
-                        ? 'border-theme-primary bg-theme-primary-light/40 font-bold text-theme-text-main shadow-xs ring-1 ring-theme-primary/30'
-                        : 'border-theme-border bg-theme-background hover:bg-theme-border/20 text-theme-text-muted'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="truncate">{pat.name}</span>
-                      {backgroundTheme === pat.id && (
-                        <Check className="w-3 h-3 text-theme-primary shrink-0" />
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <CustomSelect
+                label="4. Background Watermark Pattern"
+                value={backgroundTheme}
+                onChange={(val) => setBackgroundTheme(val as any)}
+                options={BACKGROUND_PATTERNS.map((pat) => ({
+                  value: pat.id,
+                  label: pat.name,
+                  icon: <Sparkles className="w-3.5 h-3.5 text-amber-500" />,
+                  description:
+                    pat.id === 'none'
+                      ? 'Clean background without pattern'
+                      : 'Ceremonial repeating watermark',
+                }))}
+              />
 
               {/* Dedicated Watermark Pattern Color & Opacity (RGBA) */}
               {backgroundTheme !== 'none' && (
@@ -1442,26 +1480,20 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
                 />
 
                 {/* Decorative Arch Emblem */}
-                <div
-                  className="w-12 h-12 mx-auto rounded-full border flex items-center justify-center shadow-xs"
-                  style={{
-                    borderColor: effectiveTheme.borderColor,
-                    backgroundColor: `${effectiveTheme.borderColor}15`,
-                  }}
-                >
-                  {templateId === 'royal_palace' && (
-                    <Crown className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
-                  )}
-                  {templateId === 'mughal_floral' && (
-                    <Flower2 className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
-                  )}
-                  {templateId === 'regal_mandala' && (
-                    <Compass className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
-                  )}
-                  {templateId === 'contemporary_ivory' && (
-                    <Sparkles className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
-                  )}
-                </div>
+                {(() => {
+                  const IconComp = INVITATION_ICONS.find((i) => i.id === iconOption)?.icon || Crown;
+                  return (
+                    <div
+                      className="w-12 h-12 mx-auto rounded-full border flex items-center justify-center shadow-xs"
+                      style={{
+                        borderColor: effectiveTheme.borderColor,
+                        backgroundColor: `${effectiveTheme.borderColor}15`,
+                      }}
+                    >
+                      <IconComp className="w-6 h-6" style={{ color: effectiveTheme.borderColor }} />
+                    </div>
+                  );
+                })()}
 
                 {/* Greeting & Couple Names */}
                 <div className="space-y-1">

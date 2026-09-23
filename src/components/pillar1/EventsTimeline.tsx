@@ -25,6 +25,7 @@ import {
   List,
   Filter,
 } from 'lucide-react';
+import { CustomSelect } from '../common/CustomSelect';
 
 interface EventsTimelineProps {
   wedding: Wedding;
@@ -462,17 +463,18 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
           </div>
 
           {/* Side Filter Dropdown */}
-          <div className="flex items-center gap-1.5 bg-theme-background border border-theme-border rounded-xl px-2.5 py-1.5">
-            <Filter className="w-3.5 h-3.5 text-theme-text-muted flex-shrink-0" />
-            <select
+          <div className="w-52">
+            <CustomSelect
               value={sideFilter}
-              onChange={(e) => setSideFilter(e.target.value as any)}
-              className="bg-transparent text-xs font-semibold text-theme-text-main border-none focus:outline-hidden cursor-pointer"
-            >
-              <option value="all">Both Sides (All Guests)</option>
-              <option value="ladkiwale">{brideTerm}</option>
-              <option value="ladkewale">{groomTerm}</option>
-            </select>
+              onChange={(val) => setSideFilter(val as any)}
+              size="sm"
+              icon={<Filter className="w-3.5 h-3.5 text-theme-text-muted" />}
+              options={[
+                { value: 'all', label: 'Both Sides (All Guests)' },
+                { value: 'ladkiwale', label: brideTerm },
+                { value: 'ladkewale', label: groomTerm },
+              ]}
+            />
           </div>
 
           <button
@@ -869,27 +871,27 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
                       <span>Pre-fill</span>
                     </button>
                   </div>
-                  <select
+                  <CustomSelect
                     value={type}
-                    onChange={(e) => {
-                      const newType = e.target.value as WeddingEvent['type'];
+                    onChange={(val) => {
+                      const newType = val as WeddingEvent['type'];
                       setType(newType);
                       // If adding new ceremony, auto-prefill details
                       if (!editingEvent) {
                         applyTypeDefaults(newType);
                       }
                     }}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-semibold cursor-pointer"
-                  >
-                    <option value="mehendi">🎨 Mehendi</option>
-                    <option value="haldi">☀️ Haldi</option>
-                    <option value="sangeet">🎵 Sangeet</option>
-                    <option value="wedding">👑 Wedding / Pheras</option>
-                    <option value="reception">🥂 Reception</option>
-                    <option value="roka">💍 Roka</option>
-                    <option value="cocktail">🍸 Cocktail</option>
-                    <option value="other">🗓️ Other Event</option>
-                  </select>
+                    options={[
+                      { value: 'mehendi', label: 'Mehendi', badge: '🎨' },
+                      { value: 'haldi', label: 'Haldi', badge: '☀️' },
+                      { value: 'sangeet', label: 'Sangeet', badge: '🎵' },
+                      { value: 'wedding', label: 'Wedding / Pheras', badge: '👑' },
+                      { value: 'reception', label: 'Reception', badge: '🥂' },
+                      { value: 'roka', label: 'Roka', badge: '💍' },
+                      { value: 'cocktail', label: 'Cocktail', badge: '🍸' },
+                      { value: 'other', label: 'Other Event', badge: '🗓️' },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">

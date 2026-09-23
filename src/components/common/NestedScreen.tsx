@@ -74,21 +74,21 @@ export const NestedScreen: React.FC<NestedScreenProps> = ({
       >
         <div
           ref={containerRef}
-          className={`w-full ${widthClasses} bg-white dark:bg-stone-900 border border-amber-200 dark:border-stone-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-all transform duration-200 scale-100`}
+          className={`w-full ${widthClasses} bg-white border border-amber-200/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-all transform duration-200 scale-100`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-amber-100 dark:border-stone-800 bg-amber-50/50 dark:bg-stone-800/60">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-amber-100 bg-amber-50/60">
             <div>
-              <h2 className="text-xl font-serif font-bold text-stone-900 dark:text-stone-100">
+              <h2 className="text-xl font-serif font-bold text-stone-900">
                 {title}
               </h2>
               {subtitle && (
-                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>
+                <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>
               )}
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-full hover:bg-stone-200/50 dark:hover:bg-stone-700/50 transition-colors"
+              className="p-2 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-200/60 transition-colors"
               title="Close (Esc)"
             >
               <X className="w-5 h-5" />
@@ -100,7 +100,7 @@ export const NestedScreen: React.FC<NestedScreenProps> = ({
 
           {/* Footer */}
           {footer && (
-            <div className="px-6 py-4 border-t border-amber-100 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 flex items-center justify-end gap-3">
+            <div className="px-6 py-4 border-t border-amber-100 bg-stone-50/80 flex items-center justify-end gap-3">
               {footer}
             </div>
           )}
@@ -121,24 +121,24 @@ export const NestedScreen: React.FC<NestedScreenProps> = ({
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div
           ref={containerRef}
-          className={`w-screen ${widthClasses} bg-white dark:bg-stone-900 shadow-2xl border-l border-amber-200/70 dark:border-stone-800 flex flex-col transform transition-transform duration-300 ease-in-out`}
+          className={`w-screen ${widthClasses} bg-white shadow-2xl border-l border-amber-200/70 flex flex-col transform transition-transform duration-300 ease-in-out`}
         >
           {/* Drawer Header */}
-          <div className="flex items-center justify-between px-6 py-4.5 border-b border-amber-100 dark:border-stone-800 bg-gradient-to-r from-amber-50/80 via-white to-amber-50/40 dark:from-stone-900 dark:via-stone-900 dark:to-stone-800/80">
+          <div className="flex items-center justify-between px-6 py-4.5 border-b border-amber-100 bg-gradient-to-r from-amber-50/80 via-white to-amber-50/40">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900 dark:text-stone-100">
+                <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900">
                   {title}
                 </h2>
               </div>
               {subtitle && (
-                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>
+                <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>
               )}
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
-                className="p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg hover:bg-amber-100/50 dark:hover:bg-stone-800 transition-colors"
+                className="p-2 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-amber-100/50 transition-colors"
                 title="Close"
               >
                 <X className="w-5 h-5" />
@@ -151,7 +151,7 @@ export const NestedScreen: React.FC<NestedScreenProps> = ({
 
           {/* Drawer Footer */}
           {footer && (
-            <div className="px-6 py-4 border-t border-amber-100 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/90 flex items-center justify-end gap-3 shrink-0">
+            <div className="px-6 py-4 border-t border-amber-100 bg-stone-50/90 flex items-center justify-end gap-3 shrink-0">
               {footer}
             </div>
           )}

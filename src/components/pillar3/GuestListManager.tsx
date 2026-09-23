@@ -7,6 +7,7 @@ import { TagSelector } from '../tags/TagSelector';
 import { FamilyManager } from '../pillar2/FamilyManager';
 import { NestedScreen } from '../common/NestedScreen';
 import { Tooltip } from '../common/Tooltip';
+import { CustomSelect } from '../common/CustomSelect';
 import { ensureDefaultTags, syncMemberTags } from '../../utils/tagUtils';
 import {
   Users,
@@ -2190,20 +2191,23 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                 {/* Page Size Selector */}
                 <div className="flex items-center gap-1.5">
                   <span className="text-theme-text-muted text-[11px]">Rows:</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="px-2 py-1 rounded-lg border border-theme-border bg-theme-background text-theme-text-main text-xs font-semibold cursor-pointer"
-                  >
-                    <option value={25}>25 / page</option>
-                    <option value={50}>50 / page</option>
-                    <option value={100}>100 / page</option>
-                    <option value={200}>200 / page</option>
-                    <option value={99999}>All ({totalFilteredParties})</option>
-                  </select>
+                  <div className="w-32">
+                    <CustomSelect
+                      value={String(pageSize)}
+                      onChange={(val) => {
+                        setPageSize(Number(val));
+                        setCurrentPage(1);
+                      }}
+                      size="sm"
+                      options={[
+                        { value: '25', label: '25 / page' },
+                        { value: '50', label: '50 / page' },
+                        { value: '100', label: '100 / page' },
+                        { value: '200', label: '200 / page' },
+                        { value: '99999', label: `All (${totalFilteredParties})` },
+                      ]}
+                    />
+                  </div>
                 </div>
 
                 {/* Page Navigation Buttons */}
@@ -2303,15 +2307,15 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
               <label className="text-xs font-bold text-theme-text-main">
                 Wedding Side Alignment *
               </label>
-              <select
+              <CustomSelect
                 value={side}
-                onChange={(e) => setSide(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-semibold"
-              >
-                <option value="ladkewale">{groomTerm}</option>
-                <option value="ladkiwale">{brideTerm}</option>
-                <option value="mutual">Mutual Friends & Colleagues</option>
-              </select>
+                onChange={(val) => setSide(val as any)}
+                options={[
+                  { value: 'ladkewale', label: groomTerm },
+                  { value: 'ladkiwale', label: brideTerm },
+                  { value: 'mutual', label: 'Mutual Friends & Colleagues' },
+                ]}
+              />
             </div>
 
             <div className="space-y-1">
@@ -2508,56 +2512,55 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
                         <div className="space-y-1">
                           <label className="font-bold text-theme-text-main">Guest Nature / Age</label>
-                          <select
+                          <CustomSelect
                             value={member.ageCategory}
-                            onChange={(e) =>
-                              handleMemberChange(index, 'ageCategory', e.target.value as any)
+                            onChange={(val) =>
+                              handleMemberChange(index, 'ageCategory', val as any)
                             }
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-theme-border bg-theme-background font-medium cursor-pointer"
-                          >
-                            <option value="adult">👤 Adult (18+)</option>
-                            <option value="elder">👴 Elder / Senior</option>
-                            <option value="child">🧒 Child (2-12)</option>
-                            <option value="infant">👶 Infant (&lt;2)</option>
-                          </select>
+                            size="sm"
+                            options={[
+                              { value: 'adult', label: 'Adult (18+)', badge: '👤' },
+                              { value: 'elder', label: 'Elder / Senior', badge: '👴' },
+                              { value: 'child', label: 'Child (2-12)', badge: '🧒' },
+                              { value: 'infant', label: 'Infant (<2)', badge: '👶' },
+                            ]}
+                          />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="font-bold text-rose-900 dark:text-rose-300">
+                          <label className="font-bold text-rose-900">
                             Relation to Bride
                           </label>
-                          <select
-                            value={member.relationToBride}
-                            onChange={(e) =>
-                              handleMemberChange(index, 'relationToBride', e.target.value)
+                          <CustomSelect
+                            value={member.relationToBride || ''}
+                            onChange={(val) =>
+                              handleMemberChange(index, 'relationToBride', val)
                             }
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-theme-background text-rose-900 dark:text-rose-200 font-semibold cursor-pointer"
-                          >
-                            {RELATION_GUIDE_OPTIONS.map((rel) => (
-                              <option key={rel} value={rel}>
-                                {rel}
-                              </option>
-                            ))}
-                          </select>
+                            size="sm"
+                            searchable
+                            options={RELATION_GUIDE_OPTIONS.map((rel) => ({
+                              value: rel,
+                              label: rel,
+                            }))}
+                          />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="font-bold text-amber-900 dark:text-amber-300">
+                          <label className="font-bold text-amber-900">
                             Relation to Groom
                           </label>
-                          <select
-                            value={member.relationToGroom}
-                            onChange={(e) =>
-                              handleMemberChange(index, 'relationToGroom', e.target.value)
+                          <CustomSelect
+                            value={member.relationToGroom || ''}
+                            onChange={(val) =>
+                              handleMemberChange(index, 'relationToGroom', val)
                             }
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-theme-background text-amber-900 dark:text-amber-200 font-semibold cursor-pointer"
-                          >
-                            {RELATION_GUIDE_OPTIONS.map((rel) => (
-                              <option key={rel} value={rel}>
-                                {rel}
-                              </option>
-                            ))}
-                          </select>
+                            size="sm"
+                            searchable
+                            options={RELATION_GUIDE_OPTIONS.map((rel) => ({
+                              value: rel,
+                              label: rel,
+                            }))}
+                          />
                         </div>
                       </div>
 
@@ -2613,18 +2616,19 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                             <span>Dietary Preference</span>
                             <span className="text-[10px] text-theme-text-muted">(Syncs to Tags)</span>
                           </label>
-                          <select
-                            value={member.dietaryPreference}
-                            onChange={(e) =>
-                              handleMemberChange(index, 'dietaryPreference', e.target.value as any)
+                          <CustomSelect
+                            value={member.dietaryPreference || 'pure_veg'}
+                            onChange={(val) =>
+                              handleMemberChange(index, 'dietaryPreference', val as any)
                             }
-                            className="w-full px-3 py-1.5 rounded-xl border border-theme-border bg-theme-background font-semibold cursor-pointer"
-                          >
-                            <option value="pure_veg">🥗 Pure Veg (Vegetarian)</option>
-                            <option value="jain">🪷 Jain Food (No Root Vegetables)</option>
-                            <option value="non_veg">🍗 Non-Veg</option>
-                            <option value="vegan">🌱 Vegan</option>
-                          </select>
+                            size="sm"
+                            options={[
+                              { value: 'pure_veg', label: 'Pure Veg (Vegetarian)', badge: '🥗' },
+                              { value: 'jain', label: 'Jain Food (No Root Vegetables)', badge: '🪷' },
+                              { value: 'non_veg', label: 'Non-Veg', badge: '🍗' },
+                              { value: 'vegan', label: 'Vegan', badge: '🌱' },
+                            ]}
+                          />
                         </div>
 
                         <div className="space-y-1">
@@ -2735,19 +2739,20 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                         </td>
 
                         {/* Age Tier */}
-                        <td className="py-2 px-3">
-                          <select
+                        <td className="py-2 px-3 min-w-[130px]">
+                          <CustomSelect
                             value={member.ageCategory}
-                            onChange={(e) =>
-                              handleMemberChange(index, 'ageCategory', e.target.value as any)
+                            onChange={(val) =>
+                              handleMemberChange(index, 'ageCategory', val as any)
                             }
-                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs font-medium cursor-pointer"
-                          >
-                            <option value="adult">👤 Adult (18+)</option>
-                            <option value="elder">👴 Elder / Senior</option>
-                            <option value="child">🧒 Child (2-12)</option>
-                            <option value="infant">👶 Infant (&lt;2)</option>
-                          </select>
+                            size="sm"
+                            options={[
+                              { value: 'adult', label: 'Adult', badge: '👤' },
+                              { value: 'elder', label: 'Elder', badge: '👴' },
+                              { value: 'child', label: 'Child', badge: '🧒' },
+                              { value: 'infant', label: 'Infant', badge: '👶' },
+                            ]}
+                          />
                         </td>
 
                         {/* Core Family Checkbox */}
@@ -2797,53 +2802,52 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                         </td>
 
                         {/* Relation to Bride */}
-                        <td className="py-2 px-3">
-                          <select
-                            value={member.relationToBride}
-                            onChange={(e) =>
-                              handleMemberChange(index, 'relationToBride', e.target.value)
+                        <td className="py-2 px-3 min-w-[150px]">
+                          <CustomSelect
+                            value={member.relationToBride || ''}
+                            onChange={(val) =>
+                              handleMemberChange(index, 'relationToBride', val)
                             }
-                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer text-rose-900"
-                          >
-                            {RELATION_GUIDE_OPTIONS.map((rel) => (
-                              <option key={rel} value={rel}>
-                                {rel}
-                              </option>
-                            ))}
-                          </select>
+                            size="sm"
+                            searchable
+                            options={RELATION_GUIDE_OPTIONS.map((rel) => ({
+                              value: rel,
+                              label: rel,
+                            }))}
+                          />
                         </td>
 
                         {/* Relation to Groom */}
-                        <td className="py-2 px-3">
-                          <select
-                            value={member.relationToGroom}
-                            onChange={(e) =>
-                              handleMemberChange(index, 'relationToGroom', e.target.value)
+                        <td className="py-2 px-3 min-w-[150px]">
+                          <CustomSelect
+                            value={member.relationToGroom || ''}
+                            onChange={(val) =>
+                              handleMemberChange(index, 'relationToGroom', val)
                             }
-                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer text-amber-900"
-                          >
-                            {RELATION_GUIDE_OPTIONS.map((rel) => (
-                              <option key={rel} value={rel}>
-                                {rel}
-                              </option>
-                            ))}
-                          </select>
+                            size="sm"
+                            searchable
+                            options={RELATION_GUIDE_OPTIONS.map((rel) => ({
+                              value: rel,
+                              label: rel,
+                            }))}
+                          />
                         </td>
 
                         {/* Dietary */}
-                        <td className="py-2 px-3">
-                          <select
-                            value={member.dietaryPreference}
-                            onChange={(e) =>
-                              handleMemberChange(index, 'dietaryPreference', e.target.value as any)
+                        <td className="py-2 px-3 min-w-[130px]">
+                          <CustomSelect
+                            value={member.dietaryPreference || 'pure_veg'}
+                            onChange={(val) =>
+                              handleMemberChange(index, 'dietaryPreference', val as any)
                             }
-                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer"
-                          >
-                            <option value="pure_veg">Pure Veg</option>
-                            <option value="jain">Jain</option>
-                            <option value="non_veg">Non-Veg</option>
-                            <option value="vegan">Vegan</option>
-                          </select>
+                            size="sm"
+                            options={[
+                              { value: 'pure_veg', label: 'Pure Veg', badge: '🥗' },
+                              { value: 'jain', label: 'Jain', badge: '🪷' },
+                              { value: 'non_veg', label: 'Non-Veg', badge: '🍗' },
+                              { value: 'vegan', label: 'Vegan', badge: '🌱' },
+                            ]}
+                          />
                         </td>
 
                         {/* Role Title */}
@@ -3049,22 +3053,28 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
             <label className="text-xs font-bold text-theme-text-main">
               Select Guest from Guest List
             </label>
-            <select
+            <CustomSelect
               value={selectedGuestIdToAdd}
-              onChange={(e) => setSelectedGuestIdToAdd(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-xs sm:text-sm text-theme-text-main"
-            >
-              <option value="">-- Choose a guest --</option>
-              {guests?.map((g) => {
-                const party = partyMap.get(g.partyId);
-                return (
-                  <option key={g.id} value={g.id}>
-                    {g.name} ({party?.partyName || 'Family'} &bull;{' '}
-                    {party?.side === 'ladkewale' ? groomTerm : party?.side === 'ladkiwale' ? brideTerm : 'Mutual'})
-                  </option>
-                );
-              })}
-            </select>
+              onChange={(val) => setSelectedGuestIdToAdd(val)}
+              searchable
+              placeholder="-- Choose a guest --"
+              options={[
+                { value: '', label: '-- Choose a guest --' },
+                ...(guests || []).map((g) => {
+                  const party = partyMap.get(g.partyId);
+                  return {
+                    value: g.id,
+                    label: `${g.name} (${party?.partyName || 'Family'} • ${
+                      party?.side === 'ladkewale'
+                        ? groomTerm
+                        : party?.side === 'ladkiwale'
+                        ? brideTerm
+                        : 'Mutual'
+                    })`,
+                  };
+                }),
+              ]}
+            />
           </div>
 
           <div className="space-y-1.5">

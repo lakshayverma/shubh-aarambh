@@ -21,6 +21,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { NestedScreen } from '../common/NestedScreen';
+import { CustomSelect } from '../common/CustomSelect';
 
 interface AccommodationsManagerProps {
   wedding: Wedding;
@@ -737,30 +738,30 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
         <form onSubmit={handleSaveAllocation} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-bold text-theme-text-main">Select Guest Family / Party *</label>
-            <select
+            <CustomSelect
               value={assignPartyId}
-              onChange={(e) => handleAssignPartyChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-              required
-            >
-              <option value="">-- Choose Party --</option>
-              {parties?.map((p) => {
-                const pGuests = guests?.filter((g) => g.partyId === p.id) || [];
-                const confirmedCount = pGuests.filter((g) =>
-                  rsvps?.some((r) => r.guestId === g.id && r.status === 'confirmed')
-                ).length;
-                const rsvpNote =
-                  pGuests.length > 0
-                    ? ` • ${confirmedCount}/${pGuests.length} RSVP Confirmed`
-                    : '';
+              onChange={(val) => handleAssignPartyChange(val)}
+              searchable
+              placeholder="Search or select a party..."
+              options={[
+                { value: '', label: '-- Choose Party --' },
+                ...(parties || []).map((p) => {
+                  const pGuests = guests?.filter((g) => g.partyId === p.id) || [];
+                  const confirmedCount = pGuests.filter((g) =>
+                    rsvps?.some((r) => r.guestId === g.id && r.status === 'confirmed')
+                  ).length;
+                  const rsvpNote =
+                    pGuests.length > 0
+                      ? ` • ${confirmedCount}/${pGuests.length} RSVP Confirmed`
+                      : '';
 
-                return (
-                  <option key={p.id} value={p.id}>
-                    {p.partyName} ({p.adultsCount}A + {p.childrenCount}C, {p.side}{rsvpNote})
-                  </option>
-                );
-              })}
-            </select>
+                  return {
+                    value: p.id,
+                    label: `${p.partyName} (${p.adultsCount}A + ${p.childrenCount}C, ${p.side}${rsvpNote})`,
+                  };
+                }),
+              ]}
+            />
           </div>
 
           {/* Granular member selection with RSVP status */}

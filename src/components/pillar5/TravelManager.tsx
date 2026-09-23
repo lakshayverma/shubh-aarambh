@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 
 import { NestedScreen } from '../common/NestedScreen';
+import { CustomSelect } from '../common/CustomSelect';
 
 interface TravelManagerProps {
   wedding: Wedding;
@@ -1117,34 +1118,32 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
               <Sparkles className="w-3.5 h-3.5" />
               <span>Choose Popular Vehicle Preset (Grouped by Country)</span>
             </label>
-            <select
-              onChange={(e) => {
-                const selectedVal = e.target.value;
-                if (!selectedVal) return;
+            <CustomSelect
+              value=""
+              placeholder="-- Select Country Model Preset --"
+              onChange={(val) => {
+                if (!val) return;
                 for (const group of COUNTRY_VEHICLE_PRESETS) {
-                  const found = group.vehicles.find((v) => v.name === selectedVal);
+                  const found = group.vehicles.find((v) => v.name === val);
                   if (found) {
                     handleApplyVehiclePreset(found);
                     break;
                   }
                 }
               }}
-              defaultValue=""
-              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-card text-theme-text-main text-xs font-semibold cursor-pointer"
-            >
-              <option value="" disabled>
-                -- Select Country Model Preset --
-              </option>
-              {COUNTRY_VEHICLE_PRESETS.map((group) => (
-                <optgroup key={group.country} label={`${group.flag} ${group.country}`}>
-                  {group.vehicles.map((v) => (
-                    <option key={v.name} value={v.name}>
-                      {v.name} ({v.driveSide})
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              searchable
+              options={[
+                { value: '', label: '-- Select Country Model Preset --' },
+                ...COUNTRY_VEHICLE_PRESETS.flatMap((group) =>
+                  group.vehicles.map((v) => ({
+                    value: v.name,
+                    label: `${v.name} (${v.driveSide})`,
+                    badge: group.flag,
+                    description: `${group.country} • ${v.category}`,
+                  }))
+                ),
+              ]}
+            />
           </div>
 
           <div className="space-y-1">
@@ -1162,29 +1161,29 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-bold text-theme-text-main">Seating Category</label>
-              <select
+              <CustomSelect
                 value={vehicleCategory}
-                onChange={(e) => setVehicleCategory(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-              >
-                <option value="sedan_5">Sedan (5 Seater: 1 Driver + 4 Pass)</option>
-                <option value="suv_7">SUV (7 Seater: 1 Driver + 6 Pass)</option>
-                <option value="van_12">Van / Minibus (12 Seater)</option>
-                <option value="van_14">Van / Traveller (14 Seater)</option>
-                <option value="van_16">Van / Minibus (16 Seater)</option>
-              </select>
+                onChange={(val) => setVehicleCategory(val as any)}
+                options={[
+                  { value: 'sedan_5', label: 'Sedan (5 Seater: 1 Driver + 4 Pass)' },
+                  { value: 'suv_7', label: 'SUV (7 Seater: 1 Driver + 6 Pass)' },
+                  { value: 'van_12', label: 'Van / Minibus (12 Seater)' },
+                  { value: 'van_14', label: 'Van / Traveller (14 Seater)' },
+                  { value: 'van_16', label: 'Van / Minibus (16 Seater)' },
+                ]}
+              />
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-theme-text-main">Drive Side Steering</label>
-              <select
+              <CustomSelect
                 value={driveSide}
-                onChange={(e) => setDriveSide(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-semibold"
-              >
-                <option value="RHD">Right-Hand Drive (RHD - India, UK, Aus)</option>
-                <option value="LHD">Left-Hand Drive (LHD - USA, Canada)</option>
-              </select>
+                onChange={(val) => setDriveSide(val as any)}
+                options={[
+                  { value: 'RHD', label: 'Right-Hand Drive (RHD - India, UK, Aus)' },
+                  { value: 'LHD', label: 'Left-Hand Drive (LHD - USA, Canada)' },
+                ]}
+              />
             </div>
           </div>
 
@@ -1275,21 +1274,22 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
           <form onSubmit={handleSaveModalSeat} className="space-y-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-theme-text-main">Select Guest</label>
-              <select
+              <CustomSelect
                 value={selectedGuestForSeat}
-                onChange={(e) => setSelectedGuestForSeat(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs cursor-pointer"
-              >
-                <option value="">-- Unassigned (Empty Seat) --</option>
-                {guests?.map((g) => {
-                  const party = parties?.find((p) => p.id === g.partyId);
-                  return (
-                    <option key={g.id} value={g.id}>
-                      {g.name} ({g.ageCategory}) - {party?.partyName}
-                    </option>
-                  );
-                })}
-              </select>
+                onChange={(val) => setSelectedGuestForSeat(val)}
+                searchable
+                placeholder="-- Unassigned (Empty Seat) --"
+                options={[
+                  { value: '', label: '-- Unassigned (Empty Seat) --' },
+                  ...(guests || []).map((g) => {
+                    const party = parties?.find((p) => p.id === g.partyId);
+                    return {
+                      value: g.id,
+                      label: `${g.name} (${g.ageCategory}) - ${party?.partyName || ''}`,
+                    };
+                  }),
+                ]}
+              />
             </div>
 
             <div className="pt-4 border-t border-theme-border flex items-center justify-between">
@@ -1337,33 +1337,30 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
         <form onSubmit={handleSaveTravel} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-bold text-theme-text-main">Guest Party *</label>
-            <select
+            <CustomSelect
               value={travelPartyId}
-              onChange={(e) => setTravelPartyId(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-              required
-            >
-              {parties?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.partyName} ({p.primaryContactName})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setTravelPartyId(val)}
+              searchable
+              options={(parties || []).map((p) => ({
+                value: p.id,
+                label: `${p.partyName} (${p.primaryContactName})`,
+              }))}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-bold text-theme-text-main">Mode</label>
-              <select
+              <CustomSelect
                 value={travelMode}
-                onChange={(e) => setTravelMode(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-              >
-                <option value="flight">Flight</option>
-                <option value="train">Train</option>
-                <option value="personal_car">Personal Car</option>
-                <option value="bus">Bus</option>
-              </select>
+                onChange={(val) => setTravelMode(val as any)}
+                options={[
+                  { value: 'flight', label: 'Flight', icon: <Plane className="w-3.5 h-3.5 text-blue-500" /> },
+                  { value: 'train', label: 'Train', icon: <Train className="w-3.5 h-3.5 text-amber-500" /> },
+                  { value: 'personal_car', label: 'Personal Car', icon: <Car className="w-3.5 h-3.5 text-emerald-500" /> },
+                  { value: 'bus', label: 'Bus', icon: <Users className="w-3.5 h-3.5 text-purple-500" /> },
+                ]}
+              />
             </div>
 
             <div className="space-y-1">
