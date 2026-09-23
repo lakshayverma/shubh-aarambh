@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docs:update": "node scripts/update-docs.cjs",
+    "docs:check": "node scripts/update-docs.cjs --check",
+    "hooks:install": "node scripts/install-hooks.cjs"
   },
   "dependencies": {
     "@xyflow/react": "^12.4.4",
