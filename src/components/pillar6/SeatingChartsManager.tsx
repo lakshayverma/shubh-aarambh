@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import {
@@ -24,6 +24,8 @@ import {
   useReactFlow,
   ReactFlowProvider,
   NodeProps,
+  useNodesState,
+  useEdgesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { toPng } from 'html-to-image';
@@ -64,7 +66,80 @@ interface TableNodeData {
   onUnseatGuest: (elemId: string, seatNumber: number) => void;
 }
 
-const TableNodeComponent: React.FC<{ data: TableNodeData }> = React.memo(({ data }) => {
+const LANDMARK_STYLES: Record<string, { bg: string; icon: React.ComponentType<{ className?: string }>; title: string }> = {
+  mandap: {
+    bg: 'bg-gradient-to-br from-amber-600 via-rose-600 to-amber-700 text-white border-amber-300',
+    icon: Flame,
+    title: 'Vedic Mandap & Pheras',
+  },
+  stage: {
+    bg: 'bg-gradient-to-br from-rose-800 to-purple-900 text-white border-amber-400',
+    icon: Sparkles,
+    title: 'Grand Royal Stage',
+  },
+  dance_floor: {
+    bg: 'bg-gradient-to-br from-purple-800 to-indigo-950 text-white border-fuchsia-400',
+    icon: Music,
+    title: 'Dance Floor & DJ',
+  },
+  bar: {
+    bg: 'bg-gradient-to-br from-stone-800 to-stone-950 text-amber-200 border-amber-500',
+    icon: Wine,
+    title: 'Royal Cocktail Bar',
+  },
+  buffet: {
+    bg: 'bg-gradient-to-br from-emerald-800 to-teal-950 text-white border-emerald-400',
+    icon: UtensilsCrossed,
+    title: 'Royal Feast Buffet',
+  },
+  custom: {
+    bg: 'bg-theme-card text-theme-text-main border-theme-border',
+    icon: Sparkles,
+    title: 'Venue Element',
+  },
+};
+
+const DEFAULT_LANDMARK_STYLE = {
+  bg: 'bg-theme-card text-theme-text-main border-theme-border',
+  icon: Sparkles,
+  title: 'Venue Landmark',
+};
+
+const areTablePropsEqual = (
+  prevProps: any,
+  nextProps: any
+) => {
+  if (prevProps.selected !== nextProps.selected) return false;
+  const pElem = prevProps.data?.element;
+  const nElem = nextProps.data?.element;
+  if (!pElem || !nElem) return false;
+  if (
+    pElem.id !== nElem.id ||
+    pElem.label !== nElem.label ||
+    pElem.capacity !== nElem.capacity ||
+    pElem.type !== nElem.type ||
+    pElem.width !== nElem.width ||
+    pElem.height !== nElem.height ||
+    pElem.x !== nElem.x ||
+    pElem.y !== nElem.y
+  ) {
+    return false;
+  }
+  const pSeats = prevProps.data?.assignedSeats || [];
+  const nSeats = nextProps.data?.assignedSeats || [];
+  if (pSeats.length !== nSeats.length) return false;
+  for (let i = 0; i < pSeats.length; i++) {
+    if (
+      pSeats[i].seatNumber !== nSeats[i].seatNumber ||
+      pSeats[i].guestId !== nSeats[i].guestId
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const TableNodeComponent: React.FC<any> = React.memo(({ data }: any) => {
   const { element, assignedSeats, guestsMap, onEdit, onClearSeats, onDelete, onUnseatGuest } = data;
   const capacity = element.capacity || 0;
   const occupiedCount = assignedSeats.length;
@@ -464,43 +539,7 @@ const TableNodeComponent: React.FC<{ data: TableNodeData }> = React.memo(({ data
   }
 
   // 4. VENUE LANDMARKS (Mandap, Stage, Dance Floor, Bar, Buffet)
-  const landmarkStyles = {
-    mandap: {
-      bg: 'bg-gradient-to-br from-amber-600 via-rose-600 to-amber-700 text-white border-amber-300',
-      icon: Flame,
-      title: 'Vedic Mandap & Pheras',
-    },
-    stage: {
-      bg: 'bg-gradient-to-br from-rose-800 to-purple-900 text-white border-amber-400',
-      icon: Sparkles,
-      title: 'Grand Royal Stage',
-    },
-    dance_floor: {
-      bg: 'bg-gradient-to-br from-purple-800 to-indigo-950 text-white border-fuchsia-400',
-      icon: Music,
-      title: 'Dance Floor & DJ',
-    },
-    bar: {
-      bg: 'bg-gradient-to-br from-stone-800 to-stone-950 text-amber-200 border-amber-500',
-      icon: Wine,
-      title: 'Royal Cocktail Bar',
-    },
-    buffet: {
-      bg: 'bg-gradient-to-br from-emerald-800 to-teal-950 text-white border-emerald-400',
-      icon: UtensilsCrossed,
-      title: 'Royal Feast Buffet',
-    },
-    custom: {
-      bg: 'bg-theme-card text-theme-text-main border-theme-border',
-      icon: Sparkles,
-      title: 'Venue Element',
-    },
-  }[element.type] || {
-    bg: 'bg-theme-card text-theme-text-main border-theme-border',
-    icon: Sparkles,
-    title: 'Venue Landmark',
-  };
-
+  const landmarkStyles = LANDMARK_STYLES[element.type] || DEFAULT_LANDMARK_STYLE;
   const IconComp = landmarkStyles.icon;
 
   return (
@@ -530,7 +569,7 @@ const TableNodeComponent: React.FC<{ data: TableNodeData }> = React.memo(({ data
       </div>
     </div>
   );
-});
+}, areTablePropsEqual);
 
 // ---------------------------------------------------------------------------
 // Custom Guest Node for React Flow
@@ -543,7 +582,29 @@ interface GuestNodeData {
   onUnseat: (guestId: string) => void;
 }
 
-const GuestNodeComponent: React.FC<{ data: GuestNodeData }> = React.memo(({ data }) => {
+const areGuestPropsEqual = (
+  prevProps: any,
+  nextProps: any
+) => {
+  if (prevProps.selected !== nextProps.selected) return false;
+  const pGuest = prevProps.data?.guest;
+  const nGuest = nextProps.data?.guest;
+  if (!pGuest || !nGuest) return false;
+  if (pGuest.id !== nGuest.id || pGuest.name !== nGuest.name || pGuest.ageCategory !== nGuest.ageCategory) return false;
+  const pAssign = prevProps.data?.assignment;
+  const nAssign = nextProps.data?.assignment;
+  if (
+    pAssign?.elementId !== nAssign?.elementId ||
+    pAssign?.seatNumber !== nAssign?.seatNumber ||
+    pAssign?.tableName !== nAssign?.tableName
+  ) {
+    return false;
+  }
+  if (prevProps.data?.party?.side !== nextProps.data?.party?.side || prevProps.data?.party?.partyName !== nextProps.data?.party?.partyName) return false;
+  return true;
+};
+
+const GuestNodeComponent: React.FC<any> = React.memo(({ data }: any) => {
   const { guest, party, assignment, onUnseat } = data;
   const isLadkewale = party?.side === 'ladkewale';
   const isLadkiwale = party?.side === 'ladkiwale';
@@ -622,7 +683,7 @@ const GuestNodeComponent: React.FC<{ data: GuestNodeData }> = React.memo(({ data
       />
     </div>
   );
-});
+}, areGuestPropsEqual);
 
 const nodeTypes = {
   tableNode: TableNodeComponent,
@@ -638,6 +699,22 @@ interface GuestTrayItemProps {
   party?: GuestParty;
   assigned?: { tableName: string; elementId: string; seatNumber: number };
 }
+
+const areGuestTrayPropsEqual = (
+  prev: GuestTrayItemProps,
+  next: GuestTrayItemProps
+) => {
+  return (
+    prev.guest.id === next.guest.id &&
+    prev.guest.name === next.guest.name &&
+    prev.guest.ageCategory === next.guest.ageCategory &&
+    prev.party?.partyName === next.party?.partyName &&
+    prev.party?.side === next.party?.side &&
+    prev.assigned?.elementId === next.assigned?.elementId &&
+    prev.assigned?.seatNumber === next.assigned?.seatNumber &&
+    prev.assigned?.tableName === next.assigned?.tableName
+  );
+};
 
 const GuestTrayItem: React.FC<GuestTrayItemProps> = React.memo(({ guest, party, assigned }) => {
   return (
@@ -703,7 +780,7 @@ const GuestTrayItem: React.FC<GuestTrayItemProps> = React.memo(({ guest, party, 
       )}
     </div>
   );
-});
+}, areGuestTrayPropsEqual);
 
 // ---------------------------------------------------------------------------
 // Main Seating Charts Canvas Component (Inside ReactFlowProvider)
@@ -725,8 +802,39 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
     () => db.seatingPlans.where('weddingId').equals(wedding.id).toArray(),
     [wedding.id]
   );
-  const elements = useLiveQuery(() => db.floorPlanElements.toArray(), []);
-  const seatAssignments = useLiveQuery(() => db.tableSeatAssignments.toArray(), []);
+
+  // Active Ceremony & Seating Plan
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const activeEvent = events?.find((e) => e.id === selectedEventId) || events?.[0];
+  const currentEventId = activeEvent?.id || '';
+
+  const activePlan = seatingPlans?.find((p) => p.eventId === currentEventId);
+  const activePlanId = activePlan?.id;
+
+  // Scoped queries: Only query elements for the active seating plan
+  const planElements = useLiveQuery<FloorPlanElement[]>(
+    () =>
+      activePlanId
+        ? db.floorPlanElements.where('seatingPlanId').equals(activePlanId).toArray()
+        : Promise.resolve([] as FloorPlanElement[]),
+    [activePlanId]
+  ) || [];
+
+  // Scoped queries: Only query seat assignments for elements currently on this canvas
+  const planElementIdsKey = useMemo(
+    () => planElements.map((e) => e.id).sort().join(','),
+    [planElements]
+  );
+
+  const seatAssignments = useLiveQuery<TableSeatAssignment[]>(
+    async () => {
+      const ids = planElementIdsKey ? planElementIdsKey.split(',') : [];
+      if (ids.length === 0) return [] as TableSeatAssignment[];
+      return db.tableSeatAssignments.where('elementId').anyOf(ids).toArray();
+    },
+    [planElementIdsKey]
+  ) || [];
+
   const parties = useLiveQuery(
     () => db.guestParties.where('weddingId').equals(wedding.id).toArray(),
     [wedding.id]
@@ -740,13 +848,6 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
     [wedding.id]
   );
 
-  // Active Ceremony & Seating Plan
-  const [selectedEventId, setSelectedEventId] = useState<string>('');
-  const activeEvent = events?.find((e) => e.id === selectedEventId) || events?.[0];
-  const currentEventId = activeEvent?.id || '';
-
-  const activePlan = seatingPlans?.find((p) => p.eventId === currentEventId);
-
   // Flow Wrapper Ref for Export
   const flowWrapperRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -758,20 +859,31 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
   const [editLabel, setEditLabel] = useState('');
   const [editCapacity, setEditCapacity] = useState(8);
 
-  // Guest Tray Filter State
+  // Guest Tray Filter State & Windowing
   const [guestSearch, setGuestSearch] = useState('');
   const [guestTrayFilter, setGuestTrayFilter] = useState<'all' | 'unassigned' | 'assigned' | 'confirmed'>('all');
   const [sideFilter, setSideFilter] = useState<'all' | 'ladkewale' | 'ladkiwale'>('all');
+  const [trayLimit, setTrayLimit] = useState(40);
 
-  // Plan Elements
-  const planElements = useMemo(() => {
-    return elements?.filter((el) => el.seatingPlanId === activePlan?.id) || [];
-  }, [elements, activePlan?.id]);
+  useEffect(() => {
+    setTrayLimit(40);
+  }, [guestSearch, guestTrayFilter, sideFilter]);
+
+  // Fast seat assignment index by elementId for O(1) table lookup
+  const seatsByElement = useMemo(() => {
+    const map = new Map<string, TableSeatAssignment[]>();
+    for (const s of seatAssignments) {
+      const list = map.get(s.elementId) || [];
+      list.push(s);
+      map.set(s.elementId, list);
+    }
+    return map;
+  }, [seatAssignments]);
 
   // Map of guestId -> seat info in current plan
   const guestAssignmentMap = useMemo(() => {
     const map = new Map<string, { tableName: string; elementId: string; seatNumber: number }>();
-    if (!seatAssignments || !planElements.length) return map;
+    if (!seatAssignments.length || !planElements.length) return map;
 
     const elemMap = new Map(planElements.map((el) => [el.id, el.label]));
     for (const sa of seatAssignments) {
@@ -812,7 +924,6 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
         if (r.guestId) {
           set.add(r.guestId);
         } else if (r.partyId && guests) {
-          // If whole party confirmed, mark all members of party
           for (const g of guests) {
             if (g.partyId === r.partyId) set.add(g.id);
           }
@@ -846,8 +957,13 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
     });
   }, [guests, partiesMap, guestSearch, guestTrayFilter, sideFilter, guestAssignmentMap, confirmedGuestIds]);
 
+  // Windowed tray items to prevent DOM bloat with large guest lists
+  const displayedTrayGuests = useMemo(() => {
+    return filteredTrayGuests.slice(0, trayLimit);
+  }, [filteredTrayGuests, trayLimit]);
+
   // Ensure Plan Record Exists
-  const ensurePlanExists = async (): Promise<string> => {
+  const ensurePlanExists = useCallback(async (): Promise<string> => {
     let planId = activePlan?.id;
     if (!planId) {
       planId = `plan-${wedding.id}-${currentEventId}`;
@@ -861,73 +977,85 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
       });
     }
     return planId;
-  };
+  }, [activePlan?.id, wedding.id, currentEventId, activeEvent?.name]);
 
   // Add Element to Plan
-  const handleAddElementAtPosition = async (
-    type: FloorPlanElement['type'],
-    label: string,
-    width: number,
-    height: number,
-    capacity: number,
-    x: number,
-    y: number
-  ) => {
-    const planId = await ensurePlanExists();
-    const newElement: FloorPlanElement = {
-      id: `elem-${Date.now()}`,
-      seatingPlanId: planId,
-      type,
-      label,
-      x,
-      y,
-      rotation: 0,
-      width,
-      height,
-      capacity,
-    };
-    await db.floorPlanElements.put(newElement);
-  };
+  const handleAddElementAtPosition = useCallback(
+    async (
+      type: FloorPlanElement['type'],
+      label: string,
+      width: number,
+      height: number,
+      capacity: number,
+      x: number,
+      y: number
+    ) => {
+      const planId = await ensurePlanExists();
+      const newElement: FloorPlanElement = {
+        id: `elem-${Date.now()}`,
+        seatingPlanId: planId,
+        type,
+        label,
+        x,
+        y,
+        rotation: 0,
+        width,
+        height,
+        capacity,
+      };
+      await db.floorPlanElements.put(newElement);
+    },
+    [ensurePlanExists]
+  );
 
   // Seat Assignment Actions
-  const assignGuestToTableSeat = async (elementId: string, seatNumber: number, guestId: string) => {
-    const planElemIds = new Set(planElements.map((e) => e.id));
-    const allAssignments = await db.tableSeatAssignments.toArray();
+  const assignGuestToTableSeat = useCallback(
+    async (elementId: string, seatNumber: number, guestId: string) => {
+      const planElemIds = new Set(planElements.map((e) => e.id));
 
-    // 1. Unassign prior seat in this ceremony
-    const prior = allAssignments.find((s) => planElemIds.has(s.elementId) && s.guestId === guestId);
-    if (prior) {
-      await db.tableSeatAssignments.delete(prior.id);
-    }
-
-    // 2. Put new seat assignment
-    const existingTarget = allAssignments.find(
-      (s) => s.elementId === elementId && s.seatNumber === seatNumber
-    );
-    const seatId = existingTarget ? existingTarget.id : `ts-${elementId}-${seatNumber}`;
-
-    await db.tableSeatAssignments.put({
-      id: seatId,
-      elementId,
-      seatNumber,
-      guestId,
-    });
-  };
-
-  const handleDropOnTable = async (element: FloorPlanElement, guestId: string) => {
-    if (element.capacity <= 0) return;
-    const tableSeats = seatAssignments?.filter((s) => s.elementId === element.id) || [];
-    const occupiedSeats = new Set(tableSeats.map((s) => s.seatNumber));
-
-    let vacantSeatNum = 1;
-    for (let i = 1; i <= element.capacity; i++) {
-      if (!occupiedSeats.has(i)) {
-        vacantSeatNum = i;
-        break;
+      // 1. Unassign prior seat in this ceremony
+      const prior = await db.tableSeatAssignments.where('guestId').equals(guestId).toArray();
+      for (const p of prior) {
+        if (planElemIds.has(p.elementId)) {
+          await db.tableSeatAssignments.delete(p.id);
+        }
       }
-    }
-    await assignGuestToTableSeat(element.id, vacantSeatNum, guestId);
-  };
+
+      // 2. Put new seat assignment
+      const existingTarget = await db.tableSeatAssignments
+        .where('elementId')
+        .equals(elementId)
+        .filter((s) => s.seatNumber === seatNumber)
+        .first();
+      const seatId = existingTarget ? existingTarget.id : `ts-${elementId}-${seatNumber}`;
+
+      await db.tableSeatAssignments.put({
+        id: seatId,
+        elementId,
+        seatNumber,
+        guestId,
+      });
+    },
+    [planElements]
+  );
+
+  const handleDropOnTable = useCallback(
+    async (element: FloorPlanElement, guestId: string) => {
+      if (element.capacity <= 0) return;
+      const tableSeats = seatsByElement.get(element.id) || [];
+      const occupiedSeats = new Set(tableSeats.map((s) => s.seatNumber));
+
+      let vacantSeatNum = 1;
+      for (let i = 1; i <= element.capacity; i++) {
+        if (!occupiedSeats.has(i)) {
+          vacantSeatNum = i;
+          break;
+        }
+      }
+      await assignGuestToTableSeat(element.id, vacantSeatNum, guestId);
+    },
+    [seatsByElement, assignGuestToTableSeat]
+  );
 
   // Stable handlers for node data
   const handleEditElement = useCallback((e: FloorPlanElement) => {
@@ -957,32 +1085,38 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
   }, []);
 
   const handleUnseatGuest = useCallback(async (elementId: string, seatNumber: number) => {
-    const allAssignments = await db.tableSeatAssignments.toArray();
-    const target = allAssignments.find(
-      (s) => s.elementId === elementId && s.seatNumber === seatNumber
-    );
+    const target = await db.tableSeatAssignments
+      .where('elementId')
+      .equals(elementId)
+      .filter((s) => s.seatNumber === seatNumber)
+      .first();
     if (target) {
       await db.tableSeatAssignments.delete(target.id);
     }
   }, []);
 
   const handleUnseatGuestById = useCallback(async (guestId: string) => {
-    const planElemIds = new Set(planElements.map((e) => e.id));
-    const allAssignments = await db.tableSeatAssignments.toArray();
-    const target = allAssignments.find((s) => planElemIds.has(s.elementId) && s.guestId === guestId);
-    if (target) {
+    const targets = await db.tableSeatAssignments.where('guestId').equals(guestId).toArray();
+    for (const target of targets) {
       await db.tableSeatAssignments.delete(target.id);
     }
-  }, [planElements]);
+  }, []);
+
+  // React Flow Local Node & Edge States for 60fps Native Dragging
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  const isDraggingRef = useRef(false);
+  const isInitialFitDone = useRef(false);
 
   // Convert elements and assignments to React Flow Nodes & Edges
-  const { nodes, edges } = useMemo(() => {
+  const { computedNodes, computedEdges } = useMemo(() => {
     const flowNodes: Node[] = [];
     const flowEdges: Edge[] = [];
 
     // 1. Table / Venue Element Nodes
     for (const elem of planElements) {
-      const elemSeats = seatAssignments?.filter((s) => s.elementId === elem.id) || [];
+      const elemSeats = seatsByElement.get(elem.id) || [];
 
       flowNodes.push({
         id: elem.id,
@@ -1059,10 +1193,10 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
       });
     }
 
-    return { nodes: flowNodes, edges: flowEdges };
+    return { computedNodes: flowNodes, computedEdges: flowEdges };
   }, [
     planElements,
-    seatAssignments,
+    seatsByElement,
     guestsMap,
     partiesMap,
     handleEditElement,
@@ -1072,9 +1206,30 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
     handleUnseatGuestById,
   ]);
 
+  // Synchronize Dexie computed nodes & edges into React Flow state
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setNodes(computedNodes);
+      if (!isInitialFitDone.current && computedNodes.length > 0) {
+        isInitialFitDone.current = true;
+        setTimeout(() => fitView({ padding: 0.2 }), 50);
+      }
+    }
+  }, [computedNodes, setNodes, fitView]);
+
+  useEffect(() => {
+    setEdges(computedEdges);
+  }, [computedEdges, setEdges]);
+
+  // Drag handlers for 60fps tracking and DB persistence on drop
+  const onNodeDragStart = useCallback(() => {
+    isDraggingRef.current = true;
+  }, []);
+
   // Proximity Snap on Node Drag Stop
   const onNodeDragStop = useCallback(
     async (_: MouseEvent | TouchEvent, node: Node) => {
+      isDraggingRef.current = false;
       if (node.type === 'tableNode') {
         await db.floorPlanElements.update(node.id, {
           x: Math.round(node.position.x),
@@ -1107,7 +1262,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
         }
       }
     },
-    [planElements]
+    [planElements, handleDropOnTable]
   );
 
   // Manual Edge Connection (Connecting seat handle to guest)
@@ -1130,7 +1285,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
         await assignGuestToTableSeat(elementId, seatNumber, guestId);
       }
     },
-    [planElements]
+    [assignGuestToTableSeat]
   );
 
   // Drag and Drop from Left Guest Tray or Element Palette onto Canvas
@@ -1197,7 +1352,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
         } else if (planElements.length > 0) {
           // If dropped near canvas without snapping, seat at first table with vacant seat
           const firstVacant = planElements.find((e) => {
-            const seats = seatAssignments?.filter((s) => s.elementId === e.id) || [];
+            const seats = seatsByElement.get(e.id) || [];
             return e.capacity > 0 && seats.length < e.capacity;
           });
           if (firstVacant) {
@@ -1206,7 +1361,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
         }
       }
     },
-    [screenToFlowPosition, planElements, seatAssignments]
+    [screenToFlowPosition, planElements, seatsByElement, handleAddElementAtPosition, handleDropOnTable]
   );
 
   // High-Resolution Image Export (PNG)
@@ -1285,7 +1440,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
               </span>
               <span>&bull;</span>
               <span>
-                Seated: <strong>{seatAssignments?.filter((s) => planElements.some((e) => e.id === s.elementId)).length || 0}</strong>
+                Seated: <strong>{seatAssignments.length}</strong>
               </span>
             </div>
 
@@ -1541,7 +1696,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
 
           {/* Draggable Guest Chips List */}
           <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
-            {filteredTrayGuests.map((g) => {
+            {displayedTrayGuests.map((g) => {
               const assigned = guestAssignmentMap.get(g.id);
               const party = partiesMap.get(g.partyId);
 
@@ -1554,6 +1709,16 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
                 />
               );
             })}
+
+            {filteredTrayGuests.length > trayLimit && (
+              <button
+                type="button"
+                onClick={() => setTrayLimit((prev) => prev + 40)}
+                className="w-full py-2 px-3 rounded-xl border border-theme-border bg-theme-background hover:bg-theme-border/20 text-xs font-semibold text-theme-primary transition-colors text-center shadow-2xs"
+              >
+                Load More ({filteredTrayGuests.length - trayLimit} remaining)
+              </button>
+            )}
 
             {filteredTrayGuests.length === 0 && (
               <div className="text-center py-6 text-theme-text-muted text-xs italic">
@@ -1577,7 +1742,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => fitView()}
+                onClick={() => fitView({ padding: 0.2 })}
                 className="px-2.5 py-1 rounded-lg border border-theme-border bg-theme-card hover:bg-theme-border/20 text-xs font-semibold text-theme-text-main shadow-2xs"
               >
                 Fit Canvas
@@ -1595,22 +1760,30 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
             <ReactFlow
               nodes={nodes}
               edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
               nodeTypes={nodeTypes}
+              onNodeDragStart={onNodeDragStart}
               onNodeDragStop={onNodeDragStop}
               onConnect={onConnect}
               connectionMode={ConnectionMode.Loose}
-              fitView
               onlyRenderVisibleElements={true}
               elevateNodesOnSelect={false}
+              selectNodesOnDrag={false}
               minZoom={0.2}
               maxZoom={2}
+              snapToGrid={true}
+              snapGrid={[10, 10]}
               className="bg-[radial-gradient(#cbd5e1_1.2px,transparent_1.2px)] [background-size:24px_24px]"
             >
               <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="var(--theme-border)" />
               <Controls showZoom={true} showFitView={true} showInteractive={true} />
               <MiniMap
                 nodeStrokeColor="#7B1113"
-                nodeColor="#FEF3C7"
+                nodeColor={(node) => (node.type === 'tableNode' ? '#D97706' : '#BE185D')}
+                nodeStrokeWidth={2}
+                pannable={false}
+                zoomable={false}
                 className="!bg-theme-card !border !border-theme-border !rounded-2xl shadow-lg"
               />
             </ReactFlow>
