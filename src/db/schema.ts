@@ -99,6 +99,8 @@ export interface Guest {
   email?: string;
   address?: string;
   isCoreFamily?: boolean;
+  roleTitle?: string; // e.g. "Chief Host", "Baraat Reception Lead", "Pooja Coordinator", "Safawala Lead"
+  assignedEventRoles?: { eventId: string; roleTitle: string }[];
   allergies?: string;
   specialAssistance?: string; // e.g. "Wheelchair", "Ground Floor", "Elderly Care"
 }

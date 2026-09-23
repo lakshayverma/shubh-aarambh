@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { Wedding, GuestParty, Guest, EventRsvp } from '../../db/schema';
@@ -29,12 +29,35 @@ import {
   Heart,
   Save,
   Check,
+  Briefcase,
+  Filter,
+  Sparkles,
+  MessageCircle,
+  UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface GuestListManagerProps {
   wedding: Wedding;
   onOpenTagManager?: () => void;
 }
+
+export const INDIAN_WEDDING_ROLE_PRESETS = [
+  'Chief Host (Ladkewale)',
+  'Chief Host (Ladkiwale)',
+  'Baraat & Safa Coordinator',
+  'Varmala & Stage Coordinator',
+  'Pooja & Rituals Lead',
+  'Bride Squad & Joota Chupai Lead',
+  'Groom Squad & Varmala Shield',
+  'Catering & Food Hospitality Lead',
+  'Room Key & Welcome Kit Lead',
+  'Transport & Airport Pickup POC',
+  'Shagun & Cash Gifts In-charge',
+  'Panditji & Samagri Coordinator',
+  'DJ & Sangeet Performance Lead',
+  'Family Elder & Blessings Lead',
+];
 
 export const RELATION_GUIDE_OPTIONS = [
   'None',
@@ -82,6 +105,7 @@ interface TabularMemberItem {
   email?: string;
   address?: string;
   isCoreFamily?: boolean;
+  roleTitle?: string;
 }
 
 export const GuestListManager: React.FC<GuestListManagerProps> = ({
@@ -149,6 +173,164 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
   const childrenCount = guests?.filter((g) => g.ageCategory === 'child').length || 0;
   const infantsCount = guests?.filter((g) => g.ageCategory === 'infant').length || 0;
   const coreFamilyCount = guests?.filter((g) => !!g.isCoreFamily).length || 0;
+
+  // Core Family & Operational Roles Sub-Tab State
+  const [coreSearchQuery, setCoreSearchQuery] = useState('');
+  const [coreRoleCategoryFilter, setCoreRoleCategoryFilter] = useState<
+    'all' | 'assigned_role' | 'core_family' | 'elders' | 'squad'
+  >('all');
+  const [isRoleDrawerOpen, setIsRoleDrawerOpen] = useState(false);
+  const [editingRoleGuest, setEditingRoleGuest] = useState<Guest | null>(null);
+  const [roleInput, setRoleInput] = useState('');
+  const [isRoleCoreToggle, setIsRoleCoreToggle] = useState(false);
+
+  const [isAddCoreDrawerOpen, setIsAddCoreDrawerOpen] = useState(false);
+  const [selectedGuestIdToAdd, setSelectedGuestIdToAdd] = useState('');
+  const [newCoreRoleInput, setNewCoreRoleInput] = useState('');
+
+  // Fast map of partyId -> GuestParty
+  const partyMap = useMemo(() => {
+    const map = new Map<string, GuestParty>();
+    if (parties) {
+      for (const p of parties) map.set(p.id, p);
+    }
+    return map;
+  }, [parties]);
+
+  // Core tag IDs
+  const coreTagIds = useMemo(() => {
+    const set = new Set<string>();
+    if (allTags) {
+      for (const t of allTags) {
+        const lower = t.name.toLowerCase();
+        if (lower.includes('core') || lower.includes('host') || lower.includes('vip')) {
+          set.add(t.id);
+        }
+      }
+    }
+    return set;
+  }, [allTags]);
+
+  // Filter core and role members directly from guests collection
+  const allCoreAndRoleGuests = useMemo<Guest[]>(() => {
+    if (!guests) return [];
+    return guests.filter((g: Guest) => {
+      const isCore = !!g.isCoreFamily;
+      const hasRole = !!g.roleTitle && g.roleTitle.trim() !== '';
+      const hasEventRole = !!g.assignedEventRoles && g.assignedEventRoles.length > 0;
+      const hasCoreTag = !!g.tagIds && g.tagIds.some((tid) => coreTagIds.has(tid));
+      return isCore || hasRole || hasEventRole || hasCoreTag;
+    });
+  }, [guests, coreTagIds]);
+
+  // Filter by search query and category filter
+  const filteredCoreGuests = useMemo<Guest[]>(() => {
+    return allCoreAndRoleGuests.filter((g: Guest) => {
+      const party = partyMap.get(g.partyId);
+      const matchesSearch =
+        coreSearchQuery.trim() === '' ||
+        g.name.toLowerCase().includes(coreSearchQuery.toLowerCase()) ||
+        (g.roleTitle && g.roleTitle.toLowerCase().includes(coreSearchQuery.toLowerCase())) ||
+        (g.relationToGroom && g.relationToGroom.toLowerCase().includes(coreSearchQuery.toLowerCase())) ||
+        (g.relationToBride && g.relationToBride.toLowerCase().includes(coreSearchQuery.toLowerCase())) ||
+        (party?.partyName && party.partyName.toLowerCase().includes(coreSearchQuery.toLowerCase()));
+
+      if (!matchesSearch) return false;
+
+      if (coreRoleCategoryFilter === 'assigned_role') {
+        return !!g.roleTitle && g.roleTitle.trim() !== '';
+      }
+      if (coreRoleCategoryFilter === 'core_family') {
+        return !!g.isCoreFamily;
+      }
+      if (coreRoleCategoryFilter === 'elders') {
+        return g.ageCategory === 'elder' || g.generationLevel === 1 || g.generationLevel === 2;
+      }
+      if (coreRoleCategoryFilter === 'squad') {
+        return (
+          g.ageCategory === 'adult' &&
+          ((g.roleTitle && g.roleTitle.toLowerCase().includes('squad')) ||
+            (g.relationToBride && g.relationToBride.toLowerCase().includes('sister')) ||
+            (g.relationToGroom && g.relationToGroom.toLowerCase().includes('brother')) ||
+            (g.relationToGroom && g.relationToGroom.toLowerCase().includes('friend')) ||
+            (g.relationToBride && g.relationToBride.toLowerCase().includes('friend')))
+        );
+      }
+      return true;
+    });
+  }, [allCoreAndRoleGuests, coreSearchQuery, coreRoleCategoryFilter, partyMap]);
+
+  // Partition into Groom Core Family vs Bride Core Family vs Mutual
+  const { groomCoreMembers, brideCoreMembers, mutualCoreMembers } = useMemo(() => {
+    const groomList: Guest[] = [];
+    const brideList: Guest[] = [];
+    const mutualList: Guest[] = [];
+
+    for (const g of filteredCoreGuests) {
+      const party = partyMap.get(g.partyId);
+      const isGroomSide =
+        party?.side === 'ladkewale' ||
+        (g.relationToGroom && g.relationToGroom !== 'None') ||
+        (party?.partyName && party.partyName.toLowerCase().includes('verma')) ||
+        (party?.partyName && party.partyName.toLowerCase().includes('groom'));
+
+      const isBrideSide =
+        party?.side === 'ladkiwale' ||
+        (g.relationToBride && g.relationToBride !== 'None') ||
+        (party?.partyName && party.partyName.toLowerCase().includes('sharma')) ||
+        (party?.partyName && party.partyName.toLowerCase().includes('bride'));
+
+      if (isGroomSide && !isBrideSide) {
+        groomList.push(g);
+      } else if (isBrideSide && !isGroomSide) {
+        brideList.push(g);
+      } else if (isGroomSide && isBrideSide) {
+        if (party?.side === 'ladkiwale') brideList.push(g);
+        else groomList.push(g);
+      } else {
+        if (party?.side === 'ladkewale') groomList.push(g);
+        else if (party?.side === 'ladkiwale') brideList.push(g);
+        else mutualList.push(g);
+      }
+    }
+    return { groomCoreMembers: groomList, brideCoreMembers: brideList, mutualCoreMembers: mutualList };
+  }, [filteredCoreGuests, partyMap]);
+
+  const toggleCoreStatus = async (guest: Guest, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    await db.guests.update(guest.id, { isCoreFamily: !guest.isCoreFamily });
+  };
+
+  const handleOpenAssignRole = (guest: Guest, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingRoleGuest(guest);
+    setRoleInput(guest.roleTitle || '');
+    setIsRoleCoreToggle(!!guest.isCoreFamily);
+    setIsRoleDrawerOpen(true);
+  };
+
+  const handleSaveRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRoleGuest) return;
+    await db.guests.update(editingRoleGuest.id, {
+      roleTitle: roleInput.trim() || undefined,
+      isCoreFamily: isRoleCoreToggle,
+    });
+    setIsRoleDrawerOpen(false);
+    setEditingRoleGuest(null);
+  };
+
+  const handleAddGuestToCore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGuestIdToAdd) return;
+    await db.guests.update(selectedGuestIdToAdd, {
+      isCoreFamily: true,
+      roleTitle: newCoreRoleInput.trim() || undefined,
+    });
+    setSelectedGuestIdToAdd('');
+    setNewCoreRoleInput('');
+    setIsAddCoreDrawerOpen(false);
+  };
 
   const togglePartyExpand = (partyId: string) => {
     setExpandedPartyIds((prev) => {
@@ -221,6 +403,7 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
           email: g.email || '',
           address: g.address || '',
           isCoreFamily: !!g.isCoreFamily,
+          roleTitle: g.roleTitle || '',
         }))
       );
     } else {
@@ -377,6 +560,7 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
         email: m.email?.trim() || undefined,
         address: m.address?.trim() || undefined,
         isCoreFamily: !!m.isCoreFamily,
+        roleTitle: m.roleTitle?.trim() || undefined,
         tagIds: selectedTagIds,
       }));
 
@@ -691,14 +875,548 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
         />
       )}
 
-      {/* SUB-VIEW 2: Core Family View */}
+      {/* SUB-VIEW 2: Unified Core Family & Roles Hub (Filtered from Guests) */}
       {activeSubTab === 'core_family' && (
-        <FamilyManager
-          wedding={wedding}
-          onOpenTagManager={onOpenTagManager}
-          defaultView="directory"
-          hideHeader={true}
-        />
+        <div className="space-y-6">
+          {/* Metrics summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-theme-card border border-theme-border p-3.5 rounded-2xl shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-theme-text-muted tracking-wider">
+                Total Core & Roles
+              </span>
+              <div className="text-2xl font-bold font-serif text-theme-primary">
+                {allCoreAndRoleGuests.length}
+              </div>
+            </div>
+            <div className="bg-theme-card border border-amber-200/80 p-3.5 rounded-2xl shadow-2xs bg-amber-50/20">
+              <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider">
+                {groomTerm}
+              </span>
+              <div className="text-2xl font-bold font-serif text-amber-700">
+                {groomCoreMembers.length}
+              </div>
+            </div>
+            <div className="bg-theme-card border border-rose-200/80 p-3.5 rounded-2xl shadow-2xs bg-rose-50/20">
+              <span className="text-[10px] uppercase font-bold text-rose-800 tracking-wider">
+                {brideTerm}
+              </span>
+              <div className="text-2xl font-bold font-serif text-rose-700">
+                {brideCoreMembers.length}
+              </div>
+            </div>
+            <div className="bg-theme-card border border-indigo-200/80 p-3.5 rounded-2xl shadow-2xs bg-indigo-50/20">
+              <span className="text-[10px] uppercase font-bold text-indigo-800 tracking-wider">
+                Assigned Roles
+              </span>
+              <div className="text-2xl font-bold font-serif text-indigo-700">
+                {allCoreAndRoleGuests.filter((g) => !!g.roleTitle).length}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Toolbar */}
+          <div className="bg-theme-card p-4 rounded-2xl border border-theme-border shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-theme-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={coreSearchQuery}
+                onChange={(e) => setCoreSearchQuery(e.target.value)}
+                placeholder="Search core members, roles, relation..."
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-theme-border bg-theme-background text-xs sm:text-sm text-theme-text-main"
+              />
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 text-xs font-semibold">
+              {[
+                { id: 'all', label: 'All Core & Roles' },
+                { id: 'assigned_role', label: 'Has Assigned Role' },
+                { id: 'core_family', label: 'Core Flagged' },
+                { id: 'elders', label: 'Parents & Elders' },
+                { id: 'squad', label: 'Youth & Squad' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setCoreRoleCategoryFilter(f.id as any)}
+                  className={`px-3 py-1.5 rounded-xl border transition-all whitespace-nowrap ${
+                    coreRoleCategoryFilter === f.id
+                      ? 'bg-theme-primary text-white border-theme-primary shadow-xs'
+                      : 'border-theme-border bg-theme-background text-theme-text-muted hover:text-theme-text-main'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* + Add to Core Family / Assign Role Button */}
+            <button
+              type="button"
+              onClick={() => setIsAddCoreDrawerOpen(true)}
+              className="w-full md:w-auto px-4 py-2 rounded-xl text-xs font-bold text-white bg-theme-primary hover:bg-theme-primary-hover flex items-center justify-center gap-2 shadow transition-all active:scale-95 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Assign Role to Guest</span>
+            </button>
+          </div>
+
+          {/* 2-Column Side-by-Side Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Groom's Core Family & Roles */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-300/70">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    👔
+                  </div>
+                  <div>
+                    <h3 className="font-serif font-bold text-sm text-amber-950 dark:text-amber-200">
+                      {groomTerm}
+                    </h3>
+                    <p className="text-[10px] text-amber-800 dark:text-amber-300">
+                      {wedding.groomName}'s Core Family & Coordination Roles
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900">
+                  {groomCoreMembers.length} members
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {groomCoreMembers.map((g) => {
+                  const party = partyMap.get(g.partyId);
+                  const relation = g.relationToGroom && g.relationToGroom !== 'None' 
+                    ? g.relationToGroom 
+                    : g.relationToBride && g.relationToBride !== 'None' 
+                    ? g.relationToBride 
+                    : 'Groom Family';
+
+                  return (
+                    <div
+                      key={g.id}
+                      className="p-4 rounded-2xl border border-amber-200/80 hover:border-amber-400 transition-all hover:shadow-md bg-theme-card"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-bold shadow-2xs shrink-0 bg-amber-100 text-amber-900 border border-amber-300">
+                            {g.ageCategory === 'elder'
+                              ? '👴'
+                              : g.ageCategory === 'child'
+                              ? '🧒'
+                              : g.ageCategory === 'infant'
+                              ? '👶'
+                              : '👤'}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-serif font-bold text-sm text-theme-text-main truncate">
+                                {g.name}
+                              </span>
+                              {g.isPrimaryContact && (
+                                <span title="Primary Contact">
+                                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-xs text-theme-text-muted mt-0.5 flex-wrap">
+                              <span className="font-medium text-amber-800 dark:text-amber-300">{relation}</span>
+                              <span>&bull;</span>
+                              <span className="truncate">{party?.partyName || 'Family'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 1-Click Core Family Star/Crown Toggle */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleCoreStatus(g, e)}
+                          className={`p-2 rounded-xl transition-all ${
+                            g.isCoreFamily
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
+                              : 'bg-theme-background text-theme-text-muted hover:text-amber-500 border border-theme-border'
+                          }`}
+                          title={g.isCoreFamily ? 'Core Family Member (Click to unflag)' : 'Click to flag as Core Family'}
+                        >
+                          <Crown className={`w-4 h-4 ${g.isCoreFamily ? 'fill-current' : ''}`} />
+                        </button>
+                      </div>
+
+                      {/* Operational Role Section */}
+                      <div className="mt-3 pt-3 border-t border-theme-border/60">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] uppercase font-bold text-theme-text-muted tracking-wider flex items-center gap-1">
+                            <Briefcase className="w-3 h-3 text-amber-600" />
+                            <span>Operational Role</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenAssignRole(g, e)}
+                            className="text-[11px] font-bold text-theme-primary hover:underline flex items-center gap-1"
+                          >
+                            <Edit2 className="w-2.5 h-2.5" />
+                            <span>{g.roleTitle ? 'Change' : 'Assign'}</span>
+                          </button>
+                        </div>
+
+                        {g.roleTitle ? (
+                          <div
+                            onClick={(e) => handleOpenAssignRole(g, e)}
+                            className="mt-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-300/80 text-amber-950 dark:text-amber-200 text-xs font-bold flex items-center justify-between cursor-pointer hover:border-amber-400 transition-colors"
+                          >
+                            <span className="truncate">{g.roleTitle}</span>
+                            <span className="text-[10px] text-amber-700 dark:text-amber-400 ml-2 shrink-0">Click to edit</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenAssignRole(g, e)}
+                            className="mt-1.5 w-full py-1.5 px-3 rounded-xl border border-dashed border-theme-border hover:border-amber-500 text-[11px] font-semibold text-theme-text-muted hover:text-amber-700 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Assign Role (e.g. Baraat Lead, Safa POC)</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Contact Details & Special Assistance */}
+                      <div className="mt-3 flex items-center justify-between gap-2 text-xs flex-wrap">
+                        <div className="flex items-center gap-3 text-theme-text-muted">
+                          {g.phone ? (
+                            <a
+                              href={`tel:${g.phone}`}
+                              className="flex items-center gap-1 hover:text-theme-primary transition-colors"
+                              title="Call member"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>{g.phone}</span>
+                            </a>
+                          ) : (
+                            party?.phone && (
+                              <a
+                                href={`tel:${party.phone}`}
+                                className="flex items-center gap-1 hover:text-theme-primary transition-colors text-[11px]"
+                                title="Party Phone"
+                              >
+                                <Phone className="w-2.5 h-2.5" />
+                                <span>{party.phone}</span>
+                              </a>
+                            )
+                          )}
+
+                          {g.email && (
+                            <a
+                              href={`mailto:${g.email}`}
+                              className="flex items-center gap-1 hover:text-theme-primary transition-colors"
+                              title="Email member"
+                            >
+                              <Mail className="w-3 h-3" />
+                              <span className="truncate max-w-[120px]">{g.email}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        {g.specialAssistance && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                            {g.specialAssistance}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Ceremony RSVP Badges */}
+                      <div className="mt-3 pt-2.5 border-t border-theme-border/40 flex items-center gap-1 flex-wrap">
+                        <span className="text-[10px] font-semibold text-theme-text-muted mr-1">Ceremonies:</span>
+                        {events?.map((ev) => {
+                          const rsvp = rsvps?.find(
+                            (r) =>
+                              (r.guestId === g.id && r.eventId === ev.id) ||
+                              (r.partyId === g.partyId && !r.guestId && r.eventId === ev.id)
+                          );
+                          const isAttending = rsvp?.status === 'confirmed';
+                          return (
+                            <span
+                              key={ev.id}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                isAttending
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-stone-100 text-stone-500 dark:bg-stone-800'
+                              }`}
+                              title={`${ev.name}: ${rsvp ? rsvp.status : 'No RSVP'}`}
+                            >
+                              {ev.name.split(' ')[0]} {isAttending ? '✓' : '—'}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {groomCoreMembers.length === 0 && (
+                  <div className="text-center py-10 rounded-2xl border border-dashed border-theme-border text-xs text-theme-text-muted">
+                    No Groom core members or roles match current filter.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bride's Core Family & Roles */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-2xl bg-rose-500/10 border border-rose-300/70">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-rose-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    👗
+                  </div>
+                  <div>
+                    <h3 className="font-serif font-bold text-sm text-rose-950 dark:text-rose-200">
+                      {brideTerm}
+                    </h3>
+                    <p className="text-[10px] text-rose-800 dark:text-rose-300">
+                      {wedding.brideName}'s Core Family & Coordination Roles
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-200/80 text-rose-900">
+                  {brideCoreMembers.length} members
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {brideCoreMembers.map((g) => {
+                  const party = partyMap.get(g.partyId);
+                  const relation = g.relationToBride && g.relationToBride !== 'None' 
+                    ? g.relationToBride 
+                    : g.relationToGroom && g.relationToGroom !== 'None' 
+                    ? g.relationToGroom 
+                    : 'Bride Family';
+
+                  return (
+                    <div
+                      key={g.id}
+                      className="p-4 rounded-2xl border border-rose-200/80 hover:border-rose-400 transition-all hover:shadow-md bg-theme-card"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-bold shadow-2xs shrink-0 bg-rose-100 text-rose-900 border border-rose-300">
+                            {g.ageCategory === 'elder'
+                              ? '👴'
+                              : g.ageCategory === 'child'
+                              ? '🧒'
+                              : g.ageCategory === 'infant'
+                              ? '👶'
+                              : '👤'}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-serif font-bold text-sm text-theme-text-main truncate">
+                                {g.name}
+                              </span>
+                              {g.isPrimaryContact && (
+                                <span title="Primary Contact">
+                                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-xs text-theme-text-muted mt-0.5 flex-wrap">
+                              <span className="font-medium text-rose-800 dark:text-rose-300">{relation}</span>
+                              <span>&bull;</span>
+                              <span className="truncate">{party?.partyName || 'Family'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 1-Click Core Family Star/Crown Toggle */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleCoreStatus(g, e)}
+                          className={`p-2 rounded-xl transition-all ${
+                            g.isCoreFamily
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
+                              : 'bg-theme-background text-theme-text-muted hover:text-amber-500 border border-theme-border'
+                          }`}
+                          title={g.isCoreFamily ? 'Core Family Member (Click to unflag)' : 'Click to flag as Core Family'}
+                        >
+                          <Crown className={`w-4 h-4 ${g.isCoreFamily ? 'fill-current' : ''}`} />
+                        </button>
+                      </div>
+
+                      {/* Operational Role Section */}
+                      <div className="mt-3 pt-3 border-t border-theme-border/60">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] uppercase font-bold text-theme-text-muted tracking-wider flex items-center gap-1">
+                            <Briefcase className="w-3 h-3 text-rose-600" />
+                            <span>Operational Role</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenAssignRole(g, e)}
+                            className="text-[11px] font-bold text-theme-primary hover:underline flex items-center gap-1"
+                          >
+                            <Edit2 className="w-2.5 h-2.5" />
+                            <span>{g.roleTitle ? 'Change' : 'Assign'}</span>
+                          </button>
+                        </div>
+
+                        {g.roleTitle ? (
+                          <div
+                            onClick={(e) => handleOpenAssignRole(g, e)}
+                            className="mt-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/10 to-rose-600/5 border border-rose-300/80 text-rose-950 dark:text-rose-200 text-xs font-bold flex items-center justify-between cursor-pointer hover:border-rose-400 transition-colors"
+                          >
+                            <span className="truncate">{g.roleTitle}</span>
+                            <span className="text-[10px] text-rose-700 dark:text-rose-400 ml-2 shrink-0">Click to edit</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenAssignRole(g, e)}
+                            className="mt-1.5 w-full py-1.5 px-3 rounded-xl border border-dashed border-theme-border hover:border-rose-500 text-[11px] font-semibold text-theme-text-muted hover:text-rose-700 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Assign Role (e.g. Joota Chupai Lead, Hospitality)</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Contact Details & Special Assistance */}
+                      <div className="mt-3 flex items-center justify-between gap-2 text-xs flex-wrap">
+                        <div className="flex items-center gap-3 text-theme-text-muted">
+                          {g.phone ? (
+                            <a
+                              href={`tel:${g.phone}`}
+                              className="flex items-center gap-1 hover:text-theme-primary transition-colors"
+                              title="Call member"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>{g.phone}</span>
+                            </a>
+                          ) : (
+                            party?.phone && (
+                              <a
+                                href={`tel:${party.phone}`}
+                                className="flex items-center gap-1 hover:text-theme-primary transition-colors text-[11px]"
+                                title="Party Phone"
+                              >
+                                <Phone className="w-2.5 h-2.5" />
+                                <span>{party.phone}</span>
+                              </a>
+                            )
+                          )}
+
+                          {g.email && (
+                            <a
+                              href={`mailto:${g.email}`}
+                              className="flex items-center gap-1 hover:text-theme-primary transition-colors"
+                              title="Email member"
+                            >
+                              <Mail className="w-3 h-3" />
+                              <span className="truncate max-w-[120px]">{g.email}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        {g.specialAssistance && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                            {g.specialAssistance}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Ceremony RSVP Badges */}
+                      <div className="mt-3 pt-2.5 border-t border-theme-border/40 flex items-center gap-1 flex-wrap">
+                        <span className="text-[10px] font-semibold text-theme-text-muted mr-1">Ceremonies:</span>
+                        {events?.map((ev) => {
+                          const rsvp = rsvps?.find(
+                            (r) =>
+                              (r.guestId === g.id && r.eventId === ev.id) ||
+                              (r.partyId === g.partyId && !r.guestId && r.eventId === ev.id)
+                          );
+                          const isAttending = rsvp?.status === 'confirmed';
+                          return (
+                            <span
+                              key={ev.id}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                isAttending
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-stone-100 text-stone-500 dark:bg-stone-800'
+                              }`}
+                              title={`${ev.name}: ${rsvp ? rsvp.status : 'No RSVP'}`}
+                            >
+                              {ev.name.split(' ')[0]} {isAttending ? '✓' : '—'}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {brideCoreMembers.length === 0 && (
+                  <div className="text-center py-10 rounded-2xl border border-dashed border-theme-border text-xs text-theme-text-muted">
+                    No Bride core members or roles match current filter.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Mutual / Extended Roles if any */}
+          {mutualCoreMembers.length > 0 && (
+            <div className="space-y-4 pt-4 border-t border-theme-border">
+              <div className="flex items-center justify-between px-3 py-2 rounded-2xl bg-purple-500/10 border border-purple-300/70">
+                <span className="font-serif font-bold text-sm text-purple-950 dark:text-purple-200">
+                  Extended Coordination Team & Mutual Family
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-200/80 text-purple-900">
+                  {mutualCoreMembers.length} members
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {mutualCoreMembers.map((g) => {
+                  const party = partyMap.get(g.partyId);
+                  return (
+                    <div
+                      key={g.id}
+                      className="p-4 rounded-2xl border border-theme-border hover:border-theme-primary transition-all hover:shadow-md bg-theme-card"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-bold text-sm text-theme-text-main truncate">
+                          {g.name}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => toggleCoreStatus(g, e)}
+                          className={`p-1.5 rounded-lg ${
+                            g.isCoreFamily
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : 'text-stone-300 hover:text-amber-500'
+                          }`}
+                        >
+                          <Crown className={`w-3.5 h-3.5 ${g.isCoreFamily ? 'fill-current' : ''}`} />
+                        </button>
+                      </div>
+                      <div className="text-xs text-theme-text-muted mt-1 truncate">
+                        {party?.partyName || 'Family'}
+                      </div>
+                      {g.roleTitle && (
+                        <div className="mt-2 text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-200">
+                          {g.roleTitle}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* SUB-VIEW 3: Guest Directory & Multi-Event RSVP Matrix */}
@@ -1017,9 +1735,21 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                                   <span className="text-stone-300 dark:text-stone-700">&bull;</span>
                                 </td>
 
-                                {/* Member Name + Age + Core Family */}
+                                {/* Member Name + Age + Core Family + Role */}
                                 <td className="py-2 px-3 pl-6">
                                   <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => toggleCoreStatus(guest, e)}
+                                      className={`p-1 rounded transition-all ${
+                                        guest.isCoreFamily
+                                          ? 'text-amber-600 bg-amber-50 border border-amber-300'
+                                          : 'text-stone-300 hover:text-amber-500 hover:bg-stone-100'
+                                      }`}
+                                      title={guest.isCoreFamily ? 'Core Family Member (Click to unflag)' : 'Click to flag as Core Family'}
+                                    >
+                                      <Crown className={`w-3 h-3 ${guest.isCoreFamily ? 'fill-current' : ''}`} />
+                                    </button>
                                     <span className="font-medium text-theme-text-main text-xs">
                                       {guest.name}
                                     </span>
@@ -1028,13 +1758,14 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                                         <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                                       </span>
                                     )}
-                                    {guest.isCoreFamily && (
+                                    {guest.roleTitle && (
                                       <span
-                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300"
-                                        title="Core Wedding Family Member"
+                                        onClick={(e) => handleOpenAssignRole(guest, e)}
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200 cursor-pointer hover:bg-indigo-100"
+                                        title="Assigned Operational Role (Click to edit)"
                                       >
-                                        <Crown className="w-2.5 h-2.5" />
-                                        <span>Core</span>
+                                        <Briefcase className="w-2.5 h-2.5" />
+                                        <span>{guest.roleTitle}</span>
                                       </span>
                                     )}
                                     {getAgeBadge(guest.ageCategory)}
@@ -1489,6 +2220,201 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
               rows={2}
               className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm resize-none"
             />
+          </div>
+        </form>
+      </NestedScreen>
+
+      {/* Drawer 1: Operational Role Editor & Core Family Switch */}
+      <NestedScreen
+        isOpen={isRoleDrawerOpen}
+        onClose={() => {
+          setIsRoleDrawerOpen(false);
+          setEditingRoleGuest(null);
+        }}
+        title={`Assign Role — ${editingRoleGuest?.name || 'Guest'}`}
+        subtitle="Specify event responsibilities, coordination duties, or chief host status"
+        mode="drawer"
+        width="md"
+        level={2}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsRoleDrawerOpen(false);
+                setEditingRoleGuest(null);
+              }}
+              className="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-muted hover:bg-theme-border/20 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveRole}
+              className="px-4 py-2 rounded-xl bg-theme-primary hover:bg-theme-primary-hover text-white text-xs font-bold transition-all shadow-xs"
+            >
+              Save Role
+            </button>
+          </div>
+        }
+      >
+        <form onSubmit={handleSaveRole} className="p-4 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-theme-text-main flex items-center justify-between">
+              <span>Operational Role Title</span>
+              <span className="text-[10px] text-theme-text-muted">Preset or Custom</span>
+            </label>
+            <input
+              type="text"
+              value={roleInput}
+              onChange={(e) => setRoleInput(e.target.value)}
+              placeholder="e.g. Baraat Lead, Safawala POC, Room Key Lead..."
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-xs sm:text-sm text-theme-text-main"
+            />
+          </div>
+
+          {/* Quick Preset Buttons */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-theme-text-muted uppercase tracking-wider block">
+              Suggested Indian Wedding Roles
+            </span>
+            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
+              {INDIAN_WEDDING_ROLE_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setRoleInput(preset)}
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all ${
+                    roleInput === preset
+                      ? 'bg-theme-primary text-white border-theme-primary'
+                      : 'border-theme-border/70 hover:border-theme-primary bg-theme-background text-theme-text-main'
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Core Family Status Toggle */}
+          <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/50 dark:bg-amber-950/30 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Crown className="w-4 h-4 text-amber-600 shrink-0" />
+              <div>
+                <div className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                  Mark as Core Family Member
+                </div>
+                <div className="text-[10px] text-amber-800 dark:text-amber-400">
+                  Featured in Core Family Hub & VIP seating/travel
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsRoleCoreToggle(!isRoleCoreToggle)}
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                isRoleCoreToggle ? 'bg-amber-500 justify-end' : 'bg-stone-300 dark:bg-stone-700 justify-start'
+              }`}
+            >
+              <div className="bg-white w-4 h-4 rounded-full shadow-xs" />
+            </button>
+          </div>
+        </form>
+      </NestedScreen>
+
+      {/* Drawer 2: Add Guest to Core Family / Assign Role */}
+      <NestedScreen
+        isOpen={isAddCoreDrawerOpen}
+        onClose={() => {
+          setIsAddCoreDrawerOpen(false);
+          setSelectedGuestIdToAdd('');
+          setNewCoreRoleInput('');
+        }}
+        title="Assign Role to Any Guest"
+        subtitle="Pick any guest from your guest list and assign them a key responsibility"
+        mode="drawer"
+        width="md"
+        level={2}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddCoreDrawerOpen(false);
+                setSelectedGuestIdToAdd('');
+              }}
+              className="px-4 py-2 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-muted hover:bg-theme-border/20 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!selectedGuestIdToAdd}
+              onClick={handleAddGuestToCore}
+              className="px-4 py-2 rounded-xl bg-theme-primary hover:bg-theme-primary-hover disabled:opacity-40 text-white text-xs font-bold transition-all shadow-xs"
+            >
+              Confirm Role Assignment
+            </button>
+          </div>
+        }
+      >
+        <form onSubmit={handleAddGuestToCore} className="p-4 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-theme-text-main">
+              Select Guest from Guest List
+            </label>
+            <select
+              value={selectedGuestIdToAdd}
+              onChange={(e) => setSelectedGuestIdToAdd(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-xs sm:text-sm text-theme-text-main"
+            >
+              <option value="">-- Choose a guest --</option>
+              {guests?.map((g) => {
+                const party = partyMap.get(g.partyId);
+                return (
+                  <option key={g.id} value={g.id}>
+                    {g.name} ({party?.partyName || 'Family'} &bull;{' '}
+                    {party?.side === 'ladkewale' ? groomTerm : party?.side === 'ladkiwale' ? brideTerm : 'Mutual'})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-theme-text-main">
+              Operational Role Title
+            </label>
+            <input
+              type="text"
+              value={newCoreRoleInput}
+              onChange={(e) => setNewCoreRoleInput(e.target.value)}
+              placeholder="e.g. Chief Host, Baraat POC, Pooja Samagri Coordinator..."
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-xs sm:text-sm text-theme-text-main"
+            />
+          </div>
+
+          {/* Quick presets */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-theme-text-muted uppercase tracking-wider block">
+              Suggested Roles
+            </span>
+            <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
+              {INDIAN_WEDDING_ROLE_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setNewCoreRoleInput(preset)}
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all ${
+                    newCoreRoleInput === preset
+                      ? 'bg-theme-primary text-white border-theme-primary'
+                      : 'border-theme-border/70 hover:border-theme-primary bg-theme-background text-theme-text-main'
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
           </div>
         </form>
       </NestedScreen>

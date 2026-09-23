@@ -238,6 +238,32 @@ export async function seedSampleWedding(): Promise<string> {
   // Pillar 3: Guest List
   const guestParties: GuestParty[] = [
     {
+      id: 'pty-verma-core',
+      weddingId,
+      partyName: 'Verma Core Family (Groom)',
+      primaryContactName: 'Rajesh Verma',
+      phone: '+91 98111 22233',
+      email: 'rajesh.verma@example.com',
+      side: 'ladkewale',
+      adultsCount: 4,
+      childrenCount: 0,
+      tagIds: ['tag-vip'],
+      notes: 'Immediate Core Family of Groom Aarav.',
+    },
+    {
+      id: 'pty-sharma-core',
+      weddingId,
+      partyName: 'Sharma Core Family (Bride)',
+      primaryContactName: 'Ramesh Sharma',
+      phone: '+91 98222 33344',
+      email: 'ramesh.sharma@example.com',
+      side: 'ladkiwale',
+      adultsCount: 3,
+      childrenCount: 0,
+      tagIds: ['tag-vip'],
+      notes: 'Immediate Core Family of Bride Ananya.',
+    },
+    {
       id: 'pty-malhotra',
       weddingId,
       partyName: 'Malhotra Family',
@@ -279,6 +305,18 @@ export async function seedSampleWedding(): Promise<string> {
   ];
 
   const guests: Guest[] = [
+    // Groom's Core Family
+    { id: 'gst-core-1', partyId: 'pty-verma-core', weddingId, name: 'Rajesh Verma', ageCategory: 'elder', dietaryPreference: 'pure_veg', isPrimaryContact: true, relationToGroom: 'Father', isCoreFamily: true, roleTitle: 'Chief Host (Ladkewale)', phone: '+91 98111 22233', email: 'rajesh.verma@example.com', generationLevel: 2, tagIds: ['tag-vip'] },
+    { id: 'gst-core-2', partyId: 'pty-verma-core', weddingId, name: 'Sunita Verma', ageCategory: 'elder', dietaryPreference: 'pure_veg', relationToGroom: 'Mother', isCoreFamily: true, roleTitle: 'Pooja & Rituals Lead', phone: '+91 98111 22234', generationLevel: 2, tagIds: ['tag-vip'] },
+    { id: 'gst-core-3', partyId: 'pty-verma-core', weddingId, name: 'Rohan Verma', ageCategory: 'adult', dietaryPreference: 'pure_veg', relationToGroom: 'Brother', isCoreFamily: true, roleTitle: 'Baraat & Safa Coordinator', phone: '+91 98111 22235', generationLevel: 3, tagIds: ['tag-dancer'] },
+    { id: 'gst-core-4', partyId: 'pty-verma-core', weddingId, name: 'Shanti Devi', ageCategory: 'elder', dietaryPreference: 'pure_veg', relationToGroom: 'Dadi (Paternal Grandmother)', isCoreFamily: true, roleTitle: 'Family Elder & Blessings Lead', specialAssistance: 'Wheelchair assistance', generationLevel: 1, tagIds: ['tag-elderly'] },
+
+    // Bride's Core Family
+    { id: 'gst-core-5', partyId: 'pty-sharma-core', weddingId, name: 'Ramesh Sharma', ageCategory: 'elder', dietaryPreference: 'pure_veg', isPrimaryContact: true, relationToBride: 'Father', isCoreFamily: true, roleTitle: 'Chief Host (Ladkiwale)', phone: '+91 98222 33344', email: 'ramesh.sharma@example.com', generationLevel: 2, tagIds: ['tag-vip'] },
+    { id: 'gst-core-6', partyId: 'pty-sharma-core', weddingId, name: 'Meena Sharma', ageCategory: 'elder', dietaryPreference: 'pure_veg', relationToBride: 'Mother', isCoreFamily: true, roleTitle: 'Catering & Hospitality Lead', phone: '+91 98222 33345', generationLevel: 2, tagIds: ['tag-vip'] },
+    { id: 'gst-core-7', partyId: 'pty-sharma-core', weddingId, name: 'Priya Sharma', ageCategory: 'adult', dietaryPreference: 'pure_veg', relationToBride: 'Sister', isCoreFamily: true, roleTitle: 'Bride Squad & Joota Chupai Lead', phone: '+91 98222 33346', generationLevel: 3, tagIds: ['tag-dancer'] },
+
+    // Other Guests
     { id: 'gst-1', partyId: 'pty-malhotra', weddingId, name: 'Vikram Malhotra', ageCategory: 'adult', dietaryPreference: 'pure_veg', isPrimaryContact: true, relationToGroom: 'Uncle (Chacha)', generationLevel: 2 },
     { id: 'gst-2', partyId: 'pty-malhotra', weddingId, name: 'Pooja Malhotra', ageCategory: 'adult', dietaryPreference: 'pure_veg', relationToGroom: 'Aunt (Chachi)', generationLevel: 2 },
     { id: 'gst-3', partyId: 'pty-malhotra', weddingId, name: 'Aarush Malhotra', ageCategory: 'child', dietaryPreference: 'pure_veg', relationToGroom: 'Cousin', generationLevel: 3 },
