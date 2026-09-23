@@ -20,6 +20,7 @@ import {
   BedDouble,
   FileSpreadsheet,
 } from 'lucide-react';
+import { NestedScreen } from '../common/NestedScreen';
 
 interface AccommodationsManagerProps {
   wedding: Wedding;
@@ -498,7 +499,7 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
                   {/* Guest Assignment Card */}
                   <div className="border-t border-theme-border/60 pt-3">
                     {isOccupied && allocation && party ? (
-                      <div className="bg-theme-background p-3 rounded-2xl border border-theme-border space-y-2">
+                      <div className="bg-theme-background p-3 rounded-2xl border border-theme-border space-y-2.5">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-xs text-theme-text-main truncate">
                             {party.partyName}
@@ -507,6 +508,38 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
                             {party.side}
                           </span>
                         </div>
+
+                        {/* Explicit Individual Guests List (Requirement 18) */}
+                        {(() => {
+                          const assignedGuests = guests?.filter((g) =>
+                            allocation.guestIds && allocation.guestIds.length > 0
+                              ? allocation.guestIds.includes(g.id)
+                              : g.partyId === party.id
+                          ) || [];
+
+                          if (assignedGuests.length === 0) return null;
+
+                          return (
+                            <div className="bg-white/80 dark:bg-stone-800/80 p-2 rounded-xl border border-theme-border/60 space-y-1">
+                              <div className="text-[9px] uppercase font-bold text-theme-text-muted flex items-center justify-between">
+                                <span className="flex items-center gap-1">
+                                  <Users className="w-3 h-3 text-theme-primary" />
+                                  <span>Assigned Guests ({assignedGuests.length}):</span>
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {assignedGuests.map((g) => (
+                                  <span
+                                    key={g.id}
+                                    className="bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/60 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                                  >
+                                    {g.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         <div className="text-[11px] text-theme-text-muted flex items-center justify-between">
                           <span>{allocation.checkInDate} &rarr; {allocation.checkOutDate}</span>
@@ -572,377 +605,347 @@ export const AccommodationsManager: React.FC<AccommodationsManagerProps> = ({
         )}
       </div>
 
-      {/* Add / Edit Room Modal */}
-      {isRoomModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                {editingRoom ? 'Edit Room' : 'Add Hotel Room'}
-              </h3>
-              <button
-                onClick={() => setIsRoomModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveRoom} className="p-6 space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Room Number *</label>
-                <input
-                  type="text"
-                  value={roomNumber}
-                  onChange={(e) => setRoomNumber(e.target.value)}
-                  placeholder="e.g. 101, Villa 4, Suite 202"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Room Category / Type</label>
-                <input
-                  type="text"
-                  value={roomType}
-                  onChange={(e) => setRoomType(e.target.value)}
-                  placeholder="e.g. Grand Heritage Lake View, Pool Villa"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Adults Capacity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={capacityAdults}
-                    onChange={(e) => setCapacityAdults(parseInt(e.target.value) || 2)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Children Capacity</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={capacityChildren}
-                    onChange={(e) => setCapacityChildren(parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Floor / Wing</label>
-                <input
-                  type="text"
-                  value={floorWing}
-                  onChange={(e) => setFloorWing(e.target.value)}
-                  placeholder="e.g. Ground Floor, East Wing"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                />
-              </div>
-
-              <div className="pt-1">
-                <label className="flex items-center gap-2 text-xs font-semibold text-theme-text-main cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isInterconnecting}
-                    onChange={(e) => setIsInterconnecting(e.target.checked)}
-                    className="rounded-sm border-theme-border text-theme-primary focus:ring-theme-primary"
-                  />
-                  <span>Interconnecting Room</span>
-                </label>
-              </div>
-
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsRoomModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-                >
-                  {editingRoom ? 'Save Room' : 'Add Room'}
-                </button>
-              </div>
-            </form>
+      {/* Add / Edit Room Drawer */}
+      <NestedScreen
+        isOpen={isRoomModalOpen}
+        onClose={() => setIsRoomModalOpen(false)}
+        title={editingRoom ? 'Edit Room' : 'Add Hotel Room'}
+        subtitle="Configure room number, category, capacity, and wing"
+        mode="drawer"
+        width="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsRoomModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted hover:bg-theme-border/20"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveRoom}
+              className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+            >
+              {editingRoom ? 'Save Room' : 'Add Room'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSaveRoom} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Room Number *</label>
+            <input
+              type="text"
+              value={roomNumber}
+              onChange={(e) => setRoomNumber(e.target.value)}
+              placeholder="e.g. 101, Villa 4, Suite 202"
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              required
+            />
           </div>
-        </div>
-      )}
 
-      {/* Assign Guest Modal */}
-      {isAssignModalOpen && activeRoomForAssign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                Assign to Room #{activeRoomForAssign.roomNumber}
-              </h3>
-              <button
-                onClick={() => setIsAssignModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Room Category / Type</label>
+            <input
+              type="text"
+              value={roomType}
+              onChange={(e) => setRoomType(e.target.value)}
+              placeholder="e.g. Grand Heritage Lake View, Pool Villa"
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Adults Capacity</label>
+              <input
+                type="number"
+                min="1"
+                value={capacityAdults}
+                onChange={(e) => setCapacityAdults(parseInt(e.target.value) || 2)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                required
+              />
             </div>
 
-            <form onSubmit={handleSaveAllocation} className="p-6 space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Select Guest Family / Party *</label>
-                <select
-                  value={assignPartyId}
-                  onChange={(e) => handleAssignPartyChange(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  required
-                >
-                  <option value="">-- Choose Party --</option>
-                  {parties?.map((p) => {
-                    const pGuests = guests?.filter((g) => g.partyId === p.id) || [];
-                    const confirmedCount = pGuests.filter((g) =>
-                      rsvps?.some((r) => r.guestId === g.id && r.status === 'confirmed')
-                    ).length;
-                    const rsvpNote =
-                      pGuests.length > 0
-                        ? ` • ${confirmedCount}/${pGuests.length} RSVP Confirmed`
-                        : '';
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Children Capacity</label>
+              <input
+                type="number"
+                min="0"
+                value={capacityChildren}
+                onChange={(e) => setCapacityChildren(parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+          </div>
 
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Floor / Wing</label>
+            <input
+              type="text"
+              value={floorWing}
+              onChange={(e) => setFloorWing(e.target.value)}
+              placeholder="e.g. Ground Floor, East Wing"
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+            />
+          </div>
+
+          <div className="pt-1">
+            <label className="flex items-center gap-2 text-xs font-semibold text-theme-text-main cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isInterconnecting}
+                onChange={(e) => setIsInterconnecting(e.target.checked)}
+                className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
+              />
+              <span>Interconnecting Room</span>
+            </label>
+          </div>
+        </form>
+      </NestedScreen>
+
+      {/* Assign Guest Drawer */}
+      <NestedScreen
+        isOpen={isAssignModalOpen && !!activeRoomForAssign}
+        onClose={() => setIsAssignModalOpen(false)}
+        title={`Assign to Room #${activeRoomForAssign?.roomNumber || ''}`}
+        subtitle="Select family party and specific individual attendees for this room"
+        mode="drawer"
+        width="xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsAssignModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted hover:bg-theme-border/20"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAllocation}
+              className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+            >
+              Save Assignment
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSaveAllocation} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Select Guest Family / Party *</label>
+            <select
+              value={assignPartyId}
+              onChange={(e) => handleAssignPartyChange(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              required
+            >
+              <option value="">-- Choose Party --</option>
+              {parties?.map((p) => {
+                const pGuests = guests?.filter((g) => g.partyId === p.id) || [];
+                const confirmedCount = pGuests.filter((g) =>
+                  rsvps?.some((r) => r.guestId === g.id && r.status === 'confirmed')
+                ).length;
+                const rsvpNote =
+                  pGuests.length > 0
+                    ? ` • ${confirmedCount}/${pGuests.length} RSVP Confirmed`
+                    : '';
+
+                return (
+                  <option key={p.id} value={p.id}>
+                    {p.partyName} ({p.adultsCount}A + {p.childrenCount}C, {p.side}{rsvpNote})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* Granular member selection with RSVP status */}
+          {assignPartyId && (
+            <div className="space-y-1.5 p-3 rounded-2xl border border-theme-border bg-theme-background/60">
+              <div className="flex items-center justify-between text-xs font-bold text-theme-text-main">
+                <span>Assign Specific Members to this Room</span>
+                <span className="text-[10px] text-theme-text-muted">
+                  {selectedAssignGuestIds.length} of{' '}
+                  {guests?.filter((g) => g.partyId === assignPartyId).length || 0} selected
+                </span>
+              </div>
+              <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                {guests
+                  ?.filter((g) => g.partyId === assignPartyId)
+                  .map((g) => {
+                    const isSelected = selectedAssignGuestIds.includes(g.id);
+                    const hasConfirmedRsvp = rsvps?.some(
+                      (r) => r.guestId === g.id && r.status === 'confirmed'
+                    );
                     return (
-                      <option key={p.id} value={p.id}>
-                        {p.partyName} ({p.adultsCount}A + {p.childrenCount}C, {p.side}{rsvpNote})
-                      </option>
+                      <label
+                        key={g.id}
+                        className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'border-theme-primary bg-theme-card font-semibold text-theme-text-main'
+                            : 'border-theme-border/60 bg-theme-background text-theme-text-muted'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedAssignGuestIds([...selectedAssignGuestIds, g.id]);
+                              } else {
+                                setSelectedAssignGuestIds(
+                                  selectedAssignGuestIds.filter((id) => id !== g.id)
+                                );
+                              }
+                            }}
+                            className="rounded text-theme-primary focus:ring-theme-primary"
+                          />
+                          <span>{g.name}</span>
+                        </div>
+                        {hasConfirmedRsvp ? (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                            ✓ Attending
+                          </span>
+                        ) : (
+                          <span className="text-[9px] text-stone-400">No RSVP</span>
+                        )}
+                      </label>
                     );
                   })}
-                </select>
               </div>
+            </div>
+          )}
 
-              {/* Granular member selection with RSVP status */}
-              {assignPartyId && (
-                <div className="space-y-1.5 p-3 rounded-2xl border border-theme-border bg-theme-background/60">
-                  <div className="flex items-center justify-between text-xs font-bold text-theme-text-main">
-                    <span>Assign Specific Members to this Room</span>
-                    <span className="text-[10px] text-theme-text-muted">
-                      {selectedAssignGuestIds.length} of{' '}
-                      {guests?.filter((g) => g.partyId === assignPartyId).length || 0} selected
-                    </span>
-                  </div>
-                  <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
-                    {guests
-                      ?.filter((g) => g.partyId === assignPartyId)
-                      .map((g) => {
-                        const isSelected = selectedAssignGuestIds.includes(g.id);
-                        const hasConfirmedRsvp = rsvps?.some(
-                          (r) => r.guestId === g.id && r.status === 'confirmed'
-                        );
-                        return (
-                          <label
-                            key={g.id}
-                            className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-colors ${
-                              isSelected
-                                ? 'border-theme-primary bg-theme-card font-semibold text-theme-text-main'
-                                : 'border-theme-border/60 bg-theme-background text-theme-text-muted'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedAssignGuestIds([...selectedAssignGuestIds, g.id]);
-                                  } else {
-                                    setSelectedAssignGuestIds(
-                                      selectedAssignGuestIds.filter((id) => id !== g.id)
-                                    );
-                                  }
-                                }}
-                                className="rounded text-theme-primary focus:ring-theme-primary"
-                              />
-                              <span>{g.name}</span>
-                            </div>
-                            {hasConfirmedRsvp ? (
-                              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">
-                                ✓ Attending
-                              </span>
-                            ) : (
-                              <span className="text-[9px] text-stone-400">No RSVP</span>
-                            )}
-                          </label>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Check-In Date</label>
-                  <input
-                    type="date"
-                    value={assignCheckIn}
-                    onChange={(e) => setAssignCheckIn(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Check-Out Date</label>
-                  <input
-                    type="date"
-                    value={assignCheckOut}
-                    onChange={(e) => setAssignCheckOut(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Special Instructions</label>
-                <input
-                  type="text"
-                  value={specialRequests}
-                  onChange={(e) => setSpecialRequests(e.target.value)}
-                  placeholder="e.g. Rollaway extra bed, low floor for elder"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                />
-              </div>
-
-              <div className="pt-1">
-                <label className="flex items-center gap-2 text-xs font-semibold text-theme-text-main cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={welcomeHamper}
-                    onChange={(e) => setWelcomeHamper(e.target.checked)}
-                    className="rounded-sm border-theme-border text-theme-primary focus:ring-theme-primary"
-                  />
-                  <span>Welcome Hamper Delivered</span>
-                </label>
-              </div>
-
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAssignModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-                >
-                  Save Assignment
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Hotel Property Modal */}
-      {isHotelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                Add Hotel / Property
-              </h3>
-              <button
-                onClick={() => setIsHotelModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Check-In Date</label>
+              <input
+                type="date"
+                value={assignCheckIn}
+                onChange={(e) => setAssignCheckIn(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                required
+              />
             </div>
 
-            <form onSubmit={handleSaveHotel} className="p-6 space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Hotel / Resort Name *</label>
-                <input
-                  type="text"
-                  value={hotelName}
-                  onChange={(e) => setHotelName(e.target.value)}
-                  placeholder="e.g. The Leela Palace Udaipur"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Address / Location</label>
-                <input
-                  type="text"
-                  value={hotelAddress}
-                  onChange={(e) => setHotelAddress(e.target.value)}
-                  placeholder="e.g. Lake Pichola, Udaipur"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Front Desk POC</label>
-                  <input
-                    type="text"
-                    value={contactPerson}
-                    onChange={(e) => setContactPerson(e.target.value)}
-                    placeholder="Duty Manager name"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="+91 294 000000"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsHotelModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-                >
-                  Add Hotel
-                </button>
-              </div>
-            </form>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Check-Out Date</label>
+              <input
+                type="date"
+                value={assignCheckOut}
+                onChange={(e) => setAssignCheckOut(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                required
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Special Instructions</label>
+            <input
+              type="text"
+              value={specialRequests}
+              onChange={(e) => setSpecialRequests(e.target.value)}
+              placeholder="e.g. Rollaway extra bed, low floor for elder"
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+            />
+          </div>
+
+          <div className="pt-1">
+            <label className="flex items-center gap-2 text-xs font-semibold text-theme-text-main cursor-pointer">
+              <input
+                type="checkbox"
+                checked={welcomeHamper}
+                onChange={(e) => setWelcomeHamper(e.target.checked)}
+                className="rounded border-theme-border text-theme-primary focus:ring-theme-primary"
+              />
+              <span>Welcome Hamper Delivered</span>
+            </label>
+          </div>
+        </form>
+      </NestedScreen>
+
+      {/* Hotel Property Drawer */}
+      <NestedScreen
+        isOpen={isHotelModalOpen}
+        onClose={() => setIsHotelModalOpen(false)}
+        title="Add Hotel / Property"
+        subtitle="Define hotel resort block, address, and front desk duty manager"
+        mode="drawer"
+        width="lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsHotelModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted hover:bg-theme-border/20"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveHotel}
+              className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+            >
+              Add Hotel
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSaveHotel} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Hotel / Resort Name *</label>
+            <input
+              type="text"
+              value={hotelName}
+              onChange={(e) => setHotelName(e.target.value)}
+              placeholder="e.g. The Leela Palace Udaipur"
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              required
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Address / Location</label>
+            <input
+              type="text"
+              value={hotelAddress}
+              onChange={(e) => setHotelAddress(e.target.value)}
+              placeholder="e.g. Lake Pichola, Udaipur"
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Front Desk POC</label>
+              <input
+                type="text"
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                placeholder="Duty Manager name"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Phone Number</label>
+              <input
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="+91 294 000000"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+          </div>
+        </form>
+      </NestedScreen>
     </div>
   );
 };
