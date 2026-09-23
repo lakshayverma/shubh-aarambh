@@ -1,4 +1,4 @@
-# MIT License (with Non-Commercial & Conceptual Systems Amendment)
+# MIT License (with Non-Commercial, Conceptual Systems & Non-Training Amendment)
 
 Copyright (c) 2026 Lakshay Verma
 
@@ -37,7 +37,10 @@ The Author reserves the unilateral right to grant, refuse, price, or customize c
 ### 3. Proprietary Conceptual Systems
 The Author's original ideas, workflows, data models, ceremony management paradigms, and architectural concepts embodied in this work are proprietary. You may not clone, extract, or re-implement this conceptual system in other software for commercial exploitation without written authorization.
 
-### 4. Zero Liability Re-affirmed
+### 4. Prohibition on AI & Machine Learning Training
+You may **NOT** use, ingest, crawl, scrape, parse, tokenize, or feed the Software, its source code, documentation, UI designs, data schemas, or underlying Conceptual System—in whole or in part—into any training dataset, pipeline, or service to train, fine-tune, evaluate, validate, prompt-tune, distill, or optimize any artificial intelligence (AI), machine learning (ML), deep learning model, neural network, Large Language Model (LLM), or automated software generation tool without express prior written consent from the Author.
+
+### 5. Zero Liability Re-affirmed
 The Warranty Disclaimer and Limitation of Liability stated in the MIT License above apply unconditionally to all users, whether non-commercial or commercial. Charging a fee or issuing a license does not expand, waive, or alter the Author's absolute zero-liability protection against any damages, event mishaps, or financial claims.
 
 ---
