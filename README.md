@@ -6,15 +6,16 @@ A **100% offline-first Progressive Web App (PWA)** built with **React 18, TypeSc
 
 ## 🚀 Key Highlights & Philosophy
 
-- **Unified Navigation & Merged Header**: Merged wedding theme banner and app header into a sleek unified top bar. Switch weddings from the switcher dropdown with "+ New Wedding", and access app theme, offline sync status, and backup/restore from the Settings Gear dropdown.
+- **Unified Navigation & Themed Header**: Merged wedding theme banner and app header into a sleek unified top bar that dynamically matches the active wedding's custom theme palette, subtle festive gradient, and top accent strip. Switch weddings from the switcher dropdown with "+ New Wedding", and access app theme, offline sync status, and backup/restore from the Settings Gear dropdown.
 - **Unified Guests & Family Hub**: Single unified workspace integrating Family Hierarchy, Genealogical Tree Graph, and Guest List & RSVPs into one cohesive module.
+- **Core Family & Roles Direct Guest Mapping**: Bride's and Groom's Core Family members are direct entries in the guest list, tracked seamlessly across hotel rooms, travel vans, and seating charts. Dedicated "Core Family & Roles" sub-tab filters core and role-assigned attendees with 1-click Crown toggle and role assignment drawer.
 - **NestedScreen Slide-in Right Drawers**: Standardized slide-in right drawers across all pillars featuring global `Esc` key handling, backdrop dismiss, and 2-level nested drawer support.
 - **Per-Member Contact & Address**: Individual party members support separate mobile numbers, emails, and residential addresses even under the same family party.
 - **Spreadsheet-Style Individual RSVP Rows & Ceremony Tooltips**: Fast individual RSVP toggling with ceremony column headers featuring rich tooltips (date, timings, venue).
 - **Interactive Genealogical Tree Graph**: Drag nodes freely on canvas, highlight connected relations on click with automatic dimming of unrelated branches, and 1-click **Export Family Tree as PNG**.
 - **2-Level Tag Management Drawer**: Browse existing tags in a structured paginated list; open a 2nd-level drawer to create or edit tags with interactive "Wedding" vs "Global" scope switch, distinct Lucide icon picker, and custom color picker.
 - **15–85% Drag-and-Drop Travel Fleet Planner**: 15% Left Guest Tray with Attending/Seated filters; 85% Fleet Grid supporting RHD/LHD steering, luggage boot slots, and complete seating chassis matrices for 5-seater Sedans, 7-seater SUVs, 12-seater Vans (`van_12`), 14-seater Vans (`van_14`), and 16-seater Vans (`van_16`).
-- **15–85% Drag-and-Drop 2D Seating Charts**: Left Guest Tray with droppable assignment onto tables or specific seat pips around round and banquet tables.
+- **React Flow Seating Charts with Proximity Drag-and-Drop (`@xyflow/react`)**: 15% Left Guest Tray with draggable attendees; 85% React Flow Canvas featuring custom venue nodes: **Royal Diwan** (4 front-edge seat connectors for VIPs), **Round Tables** (4, 6, 8, 10-seaters with radial perimeter handles), **Banquet Tables** (4–12 seaters with dual-edge handles), Stage, and Mandap. Supports **proximity auto-connect** (guests snap to the nearest vacant seat when dragged near a table), manual edge connections, canvas zoom & pan, and **high-resolution PNG floor plan export**.
 - **Festive E-Invites with RGBA Watermark Engine**: 3-Column studio featuring live card preview, unclipped high-res PNG export, and an independent Watermark Pattern Color picker with RGBA opacity slider.
 - **100% Client-Side & Zero Cloud Overhead**: All data is stored locally in the browser's IndexedDB via `Dexie.js`. No backend servers, no subscriptions, and no API keys required.
 - **Offline-First PWA**: Configured with `vite-plugin-pwa` and Workbox for instant offline asset caching. Features an in-app installation banner and a live online/offline network indicator.
@@ -73,11 +74,13 @@ Detailed architectural specifications and feature breakdowns for each pillar are
 - **Luggage Boot Capacity**: Visual rear trunk space tracking suitcases and check-in baggage.
 - Standardized `NestedScreen` drawers for vehicles, arrivals, and seat assignments.
 
-### 6. [Seating Charts & 2D Floor Plan](./docs/pillar-6-seating-charts/README.md)
-- **15–85% Interactive Workspace**: Left Guest Tray with Attending/Seated/Side filters; 85% 2D canvas with snap-to-grid.
-- Draggable venue elements: Main Stage, Sacred Mandap, LED Dance Floor, Round Banquet Tables (6, 8, 10), Rectangular Tables (8, 12), and Royal Couple Diwans.
-- **Droppable Table Seats & Pips**: Drag guests directly onto table cards or specific circular seat pips around tables.
-- `NestedScreen` table seat assignment drawer with side color coding (*Ladkewale* vs *Ladkiwale*) and clear seat actions.
+### 6. [React Flow Seating Charts & Proximity Drag-and-Drop](./docs/pillar-6-seating-charts/README.md)
+- **15–85% Interactive Workspace**: Left Guest Tray with unseated/seated/side filters; 85% React Flow Canvas (`@xyflow/react`).
+- **Custom Table & Venue Nodes**: **Royal Diwan** with 4 front-edge seat handles (S1..S4), **Round Tables** (4, 6, 8, 10-seaters with radial handles), **Banquet Tables** (top/bottom row handles), Sacred Mandap, Stage, and Dance Floor.
+- **Proximity Snap & Auto-Connect**: Dragging a guest card within 170px of a table automatically connects them to the closest vacant seat with an animated colored connector edge.
+- **Manual Edge Connection**: Drag connector lines directly from table seat handles to guest cards.
+- **Drag-and-Drop Venue Palette**: Drag tables and venue elements straight onto the canvas.
+- **1-Click High-Res PNG Export & Zoom**: Export the entire floor plan to PNG at 2x resolution; pan, zoom with mouse wheel/pinch, and bird's-eye `<MiniMap />`.
 
 ### 7. [Festive E-Invites & 3-Column Designer Studio](./docs/pillar-7-e-invites/README.md)
 - **3-Column Inline Designer Studio**:

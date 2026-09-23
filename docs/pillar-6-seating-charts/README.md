@@ -1,4 +1,4 @@
-# Pillar 6: Seating Charts & 2D Floor Plan Designer
+# Pillar 6: Seating Charts with React Flow & Proximity Drag-and-Drop
 
 ## 1. Overview & Purpose
 Seating at Indian weddings differs by ceremony:
@@ -7,10 +7,16 @@ Seating at Indian weddings differs by ceremony:
 - The **Reception Dinner** requires round banquet tables and long presidential family tables.
 
 Pillar 6 provides:
-- Per-function **2D Floor Plan Layouts** (Sangeet, Reception, Pheras).
-- An interactive **Drag-and-Drop Canvas with Snap-to-Grid**.
-- Rich placeable venue objects: **Stage**, **Mandap**, **LED Dance Floor**, **Round Banquet Tables (8/10-seater)**, **Rectangular Tables**, and **Couple Diwans**.
-- Table seat assignment drawer with side color-coding (*Ladkewale*, *Ladkiwale*, *Mutual*) and capacity limit enforcement.
+- Per-function **2D Floor Plan Layouts** (Sangeet, Reception, Pheras) powered by **React Flow (`@xyflow/react`)**.
+- Custom table and venue nodes with accurate seating sizes, shapes, and handles.
+- **Royal Diwan** with 4 front-edge seat connectors for VIPs and elders.
+- **Round Tables (4, 6, 8, 10-seaters)** with radial perimeter handles.
+- **Rectangular Banquet Tables (4, 6, 8, 10, 12-seaters)** with top/bottom edge handles.
+- **Proximity Snap & Auto-Connect**: Dragging a guest node near a table automatically connects them to the closest vacant seat handle via an animated edge.
+- **Manual Edge Connections**: Drag connector lines directly from table seat handles to guest nodes.
+- **Drag-and-Drop Palette**: Drag venue elements (Diwans, Round Tables, Rect Tables, Mandap, Stage, Dance Floor) directly from toolbar onto the canvas.
+- **High-Resolution PNG Export**: 1-click export of the floor plan as a high-DPI image via `html-to-image`.
+- **Zoom & Viewport Controls**: Full pan, mouse wheel zoom, trackpad pinch, `<Controls />`, and `<MiniMap />`.
 
 ---
 
@@ -18,25 +24,28 @@ Pillar 6 provides:
 
 ### 2.1 15–85% Drag-and-Drop Seating Workspace (`SeatingChartsManager.tsx`)
 - **Left 15–20% Sticky Guest Tray**:
-  - Displays all wedding guests with fast search and filters by *All*, *Attending*, *Unseated*, and *Seated*.
+  - Displays all wedding guests with fast search and filters by *All*, *Unseated*, *Seated*, and *RSVP Yes*.
   - Side filter toggle: *All Sides*, *👔 Groom (Ladkewale)*, *👗 Bride (Ladkiwale)*.
-  - Draggable HTML5 guest cards with demographic markers and current seating status dots (emerald if seated at a table, stone if unseated).
-- **Right 80–85% Interactive 2D Floor Plan Canvas**:
-  - Dot-matrix grid background with 10px snap-to-grid movement.
-  - Drag tables, stage, mandap, or dance floor anywhere on the canvas to configure the layout.
-  - Direct drag-and-drop: dragging a guest chip directly onto a table card automatically allocates them to the first available seat.
-  - **Visual Droppable Seat Pips**: Circular seats around round tables display their seat numbers and occupied/vacant states; dropping directly on a seat pip assigns that exact seat number.
-  - Hover actions on canvas elements to edit table label/capacity or delete elements.
+  - Draggable HTML5 guest cards with demographic markers and current seating status dots (emerald if seated, stone if unseated).
+  - Dragging a guest from the tray onto the canvas seats them at the table or places them on the floor plan.
+- **Right 80–85% React Flow Canvas**:
+  - Dot-matrix blueprint background with grid spacing.
+  - Interactive nodes for tables and placed guests.
+  - **Royal Diwan (4 Seats)**: Ornate velvet arch styling with 4 front-edge seat handles (S1, S2, S3, S4) ready for VIP connections.
+  - **Round Tables**: Radial perimeter handles at calculated angles (4, 6, 8, 10 seaters).
+  - **Rectangular Tables**: Dual-edge handles on top and bottom rows.
+  - **Proximity Auto-Connect**: Moving any guest node within 170px of a table automatically assigns them to the first vacant seat and draws an animated colored edge.
+  - **Manual Edge Connection**: Dragging a line from any seat handle to a guest node assigns that seat immediately.
+  - **Hover Actions on Tables**: Edit label and capacity, clear all seats, or delete table.
 
 ### 2.2 Function-Specific Floor Plans
 - Planners can create and switch between distinct floor plans for each ceremony (e.g. *Sangeet Ballroom Seating Layout*, *Reception Amphitheater*, *Lakeside Mandap Layout*).
 - Preserves object positions and guest seat assignments per event.
 
-### 2.3 Table Seat Allocation Drawer (`NestedScreen`)
-- Clicking any table or diwan opens the `NestedScreen` slide-in right drawer with global `Esc` key support.
-- Displays individual seat slots with drag-over drop target support, guest picker dropdown, and clear seat button (`X`).
-- Displays side affiliation badges (*Ladkewale* vs *Ladkiwale*) to ensure balanced and harmonious family seating.
-- "Clear All Seats" quick action to reset a table in one click.
+### 2.3 Image Export & Zoom Controls
+- **Export PNG Button**: Captures the flow viewport at 2x pixel ratio and downloads `[Ceremony]_Seating_Chart.png`.
+- **Zoom Controls**: `<Controls />` widget (Zoom In, Zoom Out, Fit View, Lock).
+- **MiniMap**: Bird's eye overview of large ballroom layouts with color-coded nodes.
 
 ---
 
