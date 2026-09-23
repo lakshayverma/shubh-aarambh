@@ -611,16 +611,41 @@ const GuestNodeComponent: React.FC<any> = React.memo(({ data }: any) => {
 
   return (
     <div className="relative group select-none">
-      {/* Target handle on top to connect from Table seat handle */}
+      {/* 4 Directional Target handles to connect cleanly from whichever side the table is on */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id={`guest-target-top-${guest.id}`}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full -top-1.5 hover:!scale-125 transition-transform"
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id={`guest-target-bottom-${guest.id}`}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full -bottom-1.5 hover:!scale-125 transition-transform"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id={`guest-target-left-${guest.id}`}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full -left-1.5 hover:!scale-125 transition-transform"
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id={`guest-target-right-${guest.id}`}
+        className="!w-3 !h-3 !bg-theme-primary !border-2 !border-white !rounded-full -right-1.5 hover:!scale-125 transition-transform"
+      />
+      {/* Default fallback handle */}
       <Handle
         type="target"
         position={Position.Top}
         id={`guest-target-${guest.id}`}
-        className="!w-3.5 !h-3.5 !bg-theme-primary !border-2 !border-white !rounded-full -top-2 hover:!scale-125 transition-transform"
+        className="!w-1 !h-1 !opacity-0 -top-1 pointer-events-none"
       />
 
       <div
-        className={`p-2.5 rounded-2xl border-2 shadow-lg bg-theme-card min-w-[140px] max-w-[180px] transition-all ${
+        className={`p-2.5 rounded-2xl border-2 shadow-lg bg-theme-card w-[155px] transition-all ${
           assignment
             ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-emerald-100'
             : isLadkewale
@@ -1134,22 +1159,95 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
         },
       });
 
-      // 2. Add Seated Guest Nodes and Connector Edges
+      // 2. Add Seated Guest Nodes and Connector Edges with Generous Spacing
       elemSeats.forEach((seat, idx) => {
         const guest = guestsMap.get(seat.guestId);
         if (!guest) return;
 
         const party = partiesMap.get(guest.partyId);
         const guestNodeId = `guest-${guest.id}`;
+        const seatNum = seat.seatNumber;
+        const capacity = elem.capacity || elemSeats.length || 8;
 
-        // Compute aesthetic offset relative to table node
-        let guestX = elem.x + (idx % 2 === 0 ? -160 : (elem.width || 200) + 20);
-        let guestY = elem.y + Math.floor(idx / 2) * 80;
+        let guestX = elem.x;
+        let guestY = elem.y;
+        let targetHandleId = `guest-target-top-${guest.id}`;
 
-        if (elem.type === 'lounge_sofa') {
-          // Position under the diwan handles
-          guestX = elem.x + idx * 75 - 10;
-          guestY = elem.y + 170;
+        // 1. ROUND TABLE: Radial arrangement spaced outside the circumference
+        if (elem.type === 'round_table') {
+          const size = Math.max(160, Math.min(240, 140 + capacity * 10));
+          const radius = size / 2;
+          const centerX = elem.x + radius;
+          const centerY = elem.y + radius;
+
+          // Same angle formula as handle: (seatNum - 1) * (360 / capacity) - 90
+          const angle = (seatNum - 1) * (360 / capacity) - 90;
+          const rad = (angle * Math.PI) / 180;
+
+          // Generous radial distance: radius + 155px for crystal-clear breathing room
+          const radialDistance = radius + 155;
+          const guestCenterX = centerX + radialDistance * Math.cos(rad);
+          const guestCenterY = centerY + radialDistance * Math.sin(rad);
+
+          guestX = Math.round(guestCenterX - 78);
+          guestY = Math.round(guestCenterY - 34);
+
+          // Direct the target handle towards the table center
+          if (angle >= -45 && angle < 45) {
+            targetHandleId = `guest-target-left-${guest.id}`;
+          } else if (angle >= 45 && angle < 135) {
+            targetHandleId = `guest-target-top-${guest.id}`;
+          } else if (angle >= 135 || angle < -135) {
+            targetHandleId = `guest-target-right-${guest.id}`;
+          } else {
+            targetHandleId = `guest-target-bottom-${guest.id}`;
+          }
+        }
+        // 2. ROYAL DIWAN (Lounge Sofa): Front-facing VIP lounge seating
+        else if (elem.type === 'lounge_sofa') {
+          // 4 handles on front (bottom) side at 15%, 38%, 62%, 85%
+          // Generously space them in front with 185px center-to-center spacing
+          const diwanCenterX = elem.x + 150;
+          const seatIndex = Math.min(3, Math.max(0, seatNum - 1));
+          const guestCenterX = diwanCenterX + (seatIndex - 1.5) * 185;
+
+          guestX = Math.round(guestCenterX - 78);
+          guestY = elem.y + 210; // 80px clearance below 130px diwan bottom
+          targetHandleId = `guest-target-top-${guest.id}`;
+        }
+        // 3. RECTANGULAR TABLE (Banquet): Top row above, bottom row below
+        else if (elem.type === 'rect_table') {
+          const half = Math.ceil(capacity / 2);
+          const width = Math.max(220, Math.min(360, half * 65));
+          const height = 110;
+          const tableCenterX = elem.x + width / 2;
+
+          if (seatNum <= half) {
+            // Top row: comfortably spaced ABOVE the table
+            const topIndex = seatNum - 1;
+            const topSpanOffset = (topIndex - (half - 1) / 2) * 175;
+            guestX = Math.round(tableCenterX + topSpanOffset - 78);
+            guestY = elem.y - 120; // 50px clearance above table top
+            targetHandleId = `guest-target-bottom-${guest.id}`;
+          } else {
+            // Bottom row: comfortably spaced BELOW the table
+            const bottomTotal = capacity - half;
+            const bottomIndex = seatNum - half - 1;
+            const bottomSpanOffset = (bottomIndex - (bottomTotal - 1) / 2) * 175;
+            guestX = Math.round(tableCenterX + bottomSpanOffset - 78);
+            guestY = elem.y + height + 50; // 50px clearance below table bottom
+            targetHandleId = `guest-target-top-${guest.id}`;
+          }
+        }
+        // 4. OTHER ELEMENTS / GENERIC: Left and Right flanking with wide 70px+ clearance
+        else {
+          const elemWidth = elem.width || 200;
+          const isLeft = idx % 2 === 0;
+          const row = Math.floor(idx / 2);
+
+          guestX = isLeft ? elem.x - 225 : elem.x + elemWidth + 70;
+          guestY = elem.y + row * 95;
+          targetHandleId = isLeft ? `guest-target-right-${guest.id}` : `guest-target-left-${guest.id}`;
         }
 
         flowNodes.push({
@@ -1168,13 +1266,13 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
           },
         });
 
-        // Edge connector from table seat handle to guest
+        // Edge connector from table seat handle to guest's facing target handle
         flowEdges.push({
           id: `edge-${elem.id}-seat-${seat.seatNumber}-${guest.id}`,
           source: elem.id,
           sourceHandle: `seat-${seat.seatNumber}`,
           target: guestNodeId,
-          targetHandle: `guest-target-${guest.id}`,
+          targetHandle: targetHandleId,
           animated: false,
           style: {
             stroke:
@@ -1239,8 +1337,8 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
         const guestId = (node.data as any).guest?.id;
         if (!guestId) return;
 
-        // Proximity detection: find closest table within 170px
-        const PROXIMITY_THRESHOLD = 170;
+        // Proximity detection: find closest table within 260px (matching spaced seating radius)
+        const PROXIMITY_THRESHOLD = 260;
         let closestTable: FloorPlanElement | null = null;
         let minDistance = Infinity;
 
@@ -1333,7 +1431,7 @@ const SeatingFlowCanvas: React.FC<SeatingChartsManagerProps> = ({ wedding }) => 
         });
 
         // Check proximity to existing table nodes
-        const PROXIMITY_THRESHOLD = 170;
+        const PROXIMITY_THRESHOLD = 260;
         let closestTable: FloorPlanElement | null = null;
         let minDistance = Infinity;
 
