@@ -84,6 +84,7 @@ export async function seedSampleWedding(): Promise<string> {
       dressCode: 'Vibrant Floral / Shades of Green & Yellow',
       notes: 'Live bangle makers, chaat counters, and Rajasthani folk dholak.',
       orderIndex: 1,
+      sideScope: 'bride_only',
     },
     {
       id: 'evt-sangeet',
@@ -97,6 +98,7 @@ export async function seedSampleWedding(): Promise<string> {
       dressCode: 'Glamorous Indo-Western / Sequins & Tuxedos',
       notes: 'Family dance performances, DJ night, cocktail bar.',
       orderIndex: 2,
+      sideScope: 'common',
     },
     {
       id: 'evt-haldi',
@@ -110,6 +112,7 @@ export async function seedSampleWedding(): Promise<string> {
       dressCode: 'Sunshine Yellow / Kurta & Lehariya',
       notes: 'Organic flower petal haldi followed by dhol pool splash.',
       orderIndex: 3,
+      sideScope: 'groom_only',
     },
     {
       id: 'evt-wedding',
@@ -123,6 +126,7 @@ export async function seedSampleWedding(): Promise<string> {
       dressCode: 'Royal Traditional / Regal Sherwani & Bridal Red/Pastel',
       notes: 'Royal boat baraat entry, jaimala by the lake, sacred agni pheras.',
       orderIndex: 4,
+      sideScope: 'common',
     },
     {
       id: 'evt-reception',
@@ -136,12 +140,19 @@ export async function seedSampleWedding(): Promise<string> {
       dressCode: 'Black Tie Formal / Elegant Silks & Zari',
       notes: 'Formal couple dinner, live symphony, multi-course feast.',
       orderIndex: 5,
+      sideScope: 'common',
     },
   ];
 
-  // Tags
+  // Tags (Unified with Core Family, Coordinators, and Dietary Preferences)
   const tags: Tag[] = [
-    { id: 'tag-vip', name: 'VIP Guest', icon: 'Crown', color: '#D97706', scope: 'global' },
+    { id: 'tag-core-family', name: 'Core Family', icon: 'Crown', color: '#D97706', scope: 'global' },
+    { id: 'tag-coordinator', name: 'Event Coordinator', icon: 'Briefcase', color: '#4F46E5', scope: 'global' },
+    { id: 'tag-diet-veg', name: 'Pure Veg', icon: 'Utensils', color: '#16A34A', scope: 'global' },
+    { id: 'tag-diet-jain', name: 'Jain Food', icon: 'Sparkles', color: '#059669', scope: 'global' },
+    { id: 'tag-diet-nonveg', name: 'Non-Veg', icon: 'Flame', color: '#DC2626', scope: 'global' },
+    { id: 'tag-diet-vegan', name: 'Vegan', icon: 'Leaf', color: '#65A30D', scope: 'global' },
+    { id: 'tag-vip', name: 'VIP Guest', icon: 'Star', color: '#9333EA', scope: 'global' },
     { id: 'tag-elderly', name: 'Elderly Care', icon: 'HeartHandshake', color: '#BE185D', scope: 'global' },
     { id: 'tag-dancer', name: 'Sangeet Performer', icon: 'Sparkles', color: '#7C3AED', scope: 'wedding', weddingId },
     { id: 'tag-baraat-lead', name: 'Baraat Coordinator', icon: 'Flag', color: '#C2410C', scope: 'wedding', weddingId },

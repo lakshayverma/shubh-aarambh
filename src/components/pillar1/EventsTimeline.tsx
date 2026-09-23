@@ -145,6 +145,7 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
   const [venue, setVenue] = useState(wedding.venue);
   const [dressCode, setDressCode] = useState('');
   const [notes, setNotes] = useState('');
+  const [sideScope, setSideScope] = useState<'common' | 'bride_only' | 'groom_only'>('common');
 
   const brideTerm = wedding.brideSideTerm || "Bride's Side (Ladkiwale)";
   const groomTerm = wedding.groomSideTerm || "Groom's Side (Ladkewale)";
@@ -255,6 +256,7 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
     setEditingEvent(null);
     setType('mehendi');
     setDate(initialDate || wedding.startDate);
+    setSideScope('common');
     applyTypeDefaults('mehendi');
     setIsModalOpen(true);
   };
@@ -269,6 +271,7 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
     setVenue(event.venue);
     setDressCode(event.dressCode);
     setNotes(event.notes || '');
+    setSideScope(event.sideScope || 'common');
     setIsModalOpen(true);
   };
 
@@ -286,6 +289,7 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
         venue: venue.trim(),
         dressCode: dressCode.trim(),
         notes: notes.trim(),
+        sideScope,
       });
     } else {
       const newEvent: WeddingEvent = {
@@ -300,6 +304,7 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
         dressCode: dressCode.trim(),
         notes: notes.trim(),
         orderIndex: (events?.length || 0) + 1,
+        sideScope,
       };
       await db.events.put(newEvent);
     }
@@ -574,6 +579,19 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
                                   <span>{ritual.emoji}</span>
                                   <span>{event.type}</span>
                                 </span>
+                                {event.sideScope === 'bride_only' ? (
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
+                                    🌸 Bride Only
+                                  </span>
+                                ) : event.sideScope === 'groom_only' ? (
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                                    👑 Groom Only
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 border border-purple-200 dark:border-purple-800">
+                                    🌐 Both Sides
+                                  </span>
+                                )}
                               </div>
 
                               <div className="flex items-center gap-1 text-theme-text-muted opacity-80 group-hover:opacity-100 transition-opacity">
@@ -696,6 +714,19 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
                           <h3 className="font-serif font-bold text-lg text-theme-text-main">
                             {event.name}
                           </h3>
+                          {event.sideScope === 'bride_only' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
+                              🌸 Bride's Side Only
+                            </span>
+                          ) : event.sideScope === 'groom_only' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                              👑 Groom's Side Only
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 border border-purple-200 dark:border-purple-800">
+                              🌐 Both Sides Attend
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -870,6 +901,52 @@ export const EventsTimeline: React.FC<EventsTimelineProps> = ({ wedding }) => {
                     className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
                     required
                   />
+                </div>
+              </div>
+
+              {/* Ceremony Attendance Scope (Requirement 7) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-theme-text-main flex items-center justify-between">
+                  <span>Ceremony Attendance Scope *</span>
+                  <span className="text-[10px] text-theme-text-muted font-normal">Who attends this event?</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSideScope('common')}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center flex flex-col items-center gap-1 ${
+                      sideScope === 'common'
+                        ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 border-purple-400 shadow-xs ring-1 ring-purple-400'
+                        : 'bg-theme-background text-theme-text-muted border-theme-border hover:bg-stone-50 dark:hover:bg-stone-800'
+                    }`}
+                  >
+                    <span>🌐 Joint Event</span>
+                    <span className="text-[9px] font-normal opacity-80">Both Families</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSideScope('bride_only')}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center flex flex-col items-center gap-1 ${
+                      sideScope === 'bride_only'
+                        ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-900 dark:text-rose-200 border-rose-400 shadow-xs ring-1 ring-rose-400'
+                        : 'bg-theme-background text-theme-text-muted border-theme-border hover:bg-stone-50 dark:hover:bg-stone-800'
+                    }`}
+                  >
+                    <span>🌸 Bride Only</span>
+                    <span className="text-[9px] font-normal opacity-80">Ladkiwale Side</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSideScope('groom_only')}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-center flex flex-col items-center gap-1 ${
+                      sideScope === 'groom_only'
+                        ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-amber-400 shadow-xs ring-1 ring-amber-400'
+                        : 'bg-theme-background text-theme-text-muted border-theme-border hover:bg-stone-50 dark:hover:bg-stone-800'
+                    }`}
+                  >
+                    <span>👑 Groom Only</span>
+                    <span className="text-[9px] font-normal opacity-80">Ladkewale Side</span>
+                  </button>
                 </div>
               </div>
 

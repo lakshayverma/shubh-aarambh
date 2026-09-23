@@ -43,6 +43,7 @@ export interface WeddingEvent {
   dressCode: string;
   notes?: string;
   orderIndex: number;
+  sideScope?: 'common' | 'bride_only' | 'groom_only';
 }
 
 export interface Tag {
