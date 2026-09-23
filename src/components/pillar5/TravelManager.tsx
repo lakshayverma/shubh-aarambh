@@ -34,6 +34,8 @@ import {
   HelpCircle,
 } from 'lucide-react';
 
+import { NestedScreen } from '../common/NestedScreen';
+
 interface TravelManagerProps {
   wedding: Wedding;
   onOpenTagManager?: () => void;
@@ -58,11 +60,12 @@ export const COUNTRY_VEHICLE_PRESETS: {
     vehicles: [
       { name: 'Toyota Innova Crysta (7 Seater)', category: 'suv_7', country: 'India', driveSide: 'RHD', luggageCapacityBags: 4 },
       { name: 'Toyota Innova Hycross (7/8 Seater)', category: 'suv_7', country: 'India', driveSide: 'RHD', luggageCapacityBags: 4 },
+      { name: 'Force Urbania Executive (12 Seater)', category: 'van_12', country: 'India', driveSide: 'RHD', luggageCapacityBags: 10 },
+      { name: 'Force Urbania / Traveller (14 Seater)', category: 'van_14', country: 'India', driveSide: 'RHD', luggageCapacityBags: 12 },
+      { name: 'Force Traveller Super Luxury (16 Seater)', category: 'van_16', country: 'India', driveSide: 'RHD', luggageCapacityBags: 14 },
       { name: 'Maruti Suzuki Ertiga (7 Seater)', category: 'suv_7', country: 'India', driveSide: 'RHD', luggageCapacityBags: 3 },
       { name: 'Mahindra Scorpio-N (7 Seater)', category: 'suv_7', country: 'India', driveSide: 'RHD', luggageCapacityBags: 4 },
-      { name: 'Mahindra XUV700 (7 Seater)', category: 'suv_7', country: 'India', driveSide: 'RHD', luggageCapacityBags: 3 },
       { name: 'Toyota Fortuner 4x4 (7 Seater)', category: 'suv_7', country: 'India', driveSide: 'RHD', luggageCapacityBags: 5 },
-      { name: 'Force Urbania / Traveller (14 Seater)', category: 'van_14', country: 'India', driveSide: 'RHD', luggageCapacityBags: 12 },
       { name: 'Mercedes-Benz E-Class Luxury (5 Seater)', category: 'sedan_5', country: 'India', driveSide: 'RHD', luggageCapacityBags: 3 },
       { name: 'Honda City / Hyundai Verna (5 Seater)', category: 'sedan_5', country: 'India', driveSide: 'RHD', luggageCapacityBags: 2 },
     ],
@@ -73,11 +76,12 @@ export const COUNTRY_VEHICLE_PRESETS: {
     vehicles: [
       { name: 'Cadillac Escalade ESV (7 Seater)', category: 'suv_7', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 6 },
       { name: 'Chevrolet Suburban / Tahoe (7/8 Seater)', category: 'suv_7', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 6 },
+      { name: 'Ford Transit Passenger Van (12 Seater)', category: 'van_12', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 10 },
+      { name: 'Ford Transit Passenger Van (14 Seater)', category: 'van_14', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 12 },
+      { name: 'Chevrolet Express Passenger Van (16 Seater)', category: 'van_16', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 14 },
       { name: 'GMC Yukon XL Denali (8 Seater)', category: 'suv_7', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 6 },
       { name: 'Chrysler Pacifica Minivan (7 Seater)', category: 'suv_7', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 5 },
-      { name: 'Ford Transit Passenger Van (14 Seater)', category: 'van_14', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 10 },
       { name: 'Tesla Model X (6/7 Seater)', category: 'suv_7', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 3 },
-      { name: 'Lincoln Navigator L (7 Seater)', category: 'suv_7', country: 'USA', driveSide: 'LHD', luggageCapacityBags: 6 },
     ],
   },
   {
@@ -86,9 +90,10 @@ export const COUNTRY_VEHICLE_PRESETS: {
     vehicles: [
       { name: 'Toyota Sienna AWD Hybrid (7/8 Seater)', category: 'suv_7', country: 'Canada', driveSide: 'LHD', luggageCapacityBags: 5 },
       { name: 'Ford Expedition Max 4x4 (8 Seater)', category: 'suv_7', country: 'Canada', driveSide: 'LHD', luggageCapacityBags: 6 },
+      { name: 'Chevrolet Express Passenger Van (12 Seater)', category: 'van_12', country: 'Canada', driveSide: 'LHD', luggageCapacityBags: 10 },
+      { name: 'Ford Transit Passenger Wagon (14 Seater)', category: 'van_14', country: 'Canada', driveSide: 'LHD', luggageCapacityBags: 12 },
+      { name: 'GMC Savana Passenger Van (16 Seater)', category: 'van_16', country: 'Canada', driveSide: 'LHD', luggageCapacityBags: 14 },
       { name: 'Honda Odyssey Minivan (8 Seater)', category: 'suv_7', country: 'Canada', driveSide: 'LHD', luggageCapacityBags: 5 },
-      { name: 'Subaru Ascent 3-Row (7/8 Seater)', category: 'suv_7', country: 'Canada', driveSide: 'LHD', luggageCapacityBags: 4 },
-      { name: 'Chevrolet Express Passenger Van (12 Seater)', category: 'van_14', country: 'Canada', driveSide: 'LHD', luggageCapacityBags: 10 },
     ],
   },
   {
@@ -96,10 +101,11 @@ export const COUNTRY_VEHICLE_PRESETS: {
     flag: '🇦🇺',
     vehicles: [
       { name: 'Toyota LandCruiser Prado (7 Seater)', category: 'suv_7', country: 'Australia', driveSide: 'RHD', luggageCapacityBags: 5 },
+      { name: 'Toyota HiAce Commuter (12 Seater)', category: 'van_12', country: 'Australia', driveSide: 'RHD', luggageCapacityBags: 10 },
+      { name: 'Toyota HiAce Commuter (14 Seater)', category: 'van_14', country: 'Australia', driveSide: 'RHD', luggageCapacityBags: 12 },
+      { name: 'Mercedes-Benz Sprinter Transfer (16 Seater)', category: 'van_16', country: 'Australia', driveSide: 'RHD', luggageCapacityBags: 14 },
       { name: 'Kia Carnival People Mover (8 Seater)', category: 'suv_7', country: 'Australia', driveSide: 'RHD', luggageCapacityBags: 6 },
-      { name: 'Toyota HiAce Commuter (12-14 Seater)', category: 'van_14', country: 'Australia', driveSide: 'RHD', luggageCapacityBags: 10 },
       { name: 'Hyundai Staria 8-Seat Luxury MPV', category: 'suv_7', country: 'Australia', driveSide: 'RHD', luggageCapacityBags: 5 },
-      { name: 'Mazda CX-90 / CX-9 (7 Seater)', category: 'suv_7', country: 'Australia', driveSide: 'RHD', luggageCapacityBags: 4 },
     ],
   },
   {
@@ -107,12 +113,64 @@ export const COUNTRY_VEHICLE_PRESETS: {
     flag: '🇬🇧',
     vehicles: [
       { name: 'Mercedes-Benz V-Class Chauffeur (7/8 Seater)', category: 'suv_7', country: 'UK', driveSide: 'RHD', luggageCapacityBags: 6 },
+      { name: 'Ford Transit Minibus (12 Seater)', category: 'van_12', country: 'UK', driveSide: 'RHD', luggageCapacityBags: 10 },
+      { name: 'Ford Transit Minibus (14 Seater)', category: 'van_14', country: 'UK', driveSide: 'RHD', luggageCapacityBags: 12 },
+      { name: 'Mercedes-Benz Sprinter Minibus (16 Seater)', category: 'van_16', country: 'UK', driveSide: 'RHD', luggageCapacityBags: 14 },
       { name: 'Range Rover Long Wheelbase (5/7 Seater)', category: 'suv_7', country: 'UK', driveSide: 'RHD', luggageCapacityBags: 5 },
       { name: 'Volkswagen Multivan / Caravelle (7 Seater)', category: 'suv_7', country: 'UK', driveSide: 'RHD', luggageCapacityBags: 5 },
-      { name: 'Ford Tourneo Custom Executive (8/9 Seater)', category: 'suv_7', country: 'UK', driveSide: 'RHD', luggageCapacityBags: 7 },
     ],
   },
 ];
+
+export const getVehiclePassengerRows = (category: Vehicle['category']): number[][] => {
+  switch (category) {
+    case 'sedan_4':
+      return [[2, 3]];
+    case 'sedan_5':
+      return [[2, 3, 4]];
+    case 'suv_6':
+      return [[2, 3], [4, 5]];
+    case 'suv_7':
+    case 'personal_car':
+      return [[2, 3], [4, 5, 6]];
+    case 'tempo_12':
+    case 'van_12':
+      return [
+        [2, 3, 4],
+        [5, 6, 7],
+        [8, 9, 10, 11],
+      ];
+    case 'van_14':
+      return [
+        [2, 3, 4],
+        [5, 6, 7],
+        [8, 9, 10],
+        [11, 12, 13],
+      ];
+    case 'van_16':
+      return [
+        [2, 3, 4],
+        [5, 6, 7],
+        [8, 9, 10, 11],
+        [12, 13, 14, 15],
+      ];
+    case 'bus_30':
+      return [
+        [2, 3, 4, 5],
+        [6, 7, 8, 9],
+        [10, 11, 12, 13],
+        [14, 15, 16, 17],
+        [18, 19, 20, 21],
+        [22, 23, 24, 25],
+        [26, 27, 28, 29],
+      ];
+    default:
+      return [
+        [2, 3],
+        [4, 5, 6],
+      ];
+  }
+};
 
 export const TravelManager: React.FC<TravelManagerProps> = ({
   wedding,
@@ -386,17 +444,12 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
   };
 
   const handleUnassignSeat = async (vehicleId: string, seatIndex: number) => {
-    // Find any existing seat records for this vehicle and seat index
-    const matchingSeats = await db.vehicleSeats
-      .where('vehicleId')
-      .equals(vehicleId)
-      .toArray();
-
-    const target = matchingSeats.find((s) => s.seatIndex === seatIndex);
-    if (target) {
-      await db.vehicleSeats.delete(target.id);
+    // Delete any existing seat records for this vehicle and seat index across the wedding
+    const allSeats = await db.vehicleSeats.where('weddingId').equals(wedding.id).toArray();
+    const targets = allSeats.filter((s) => s.vehicleId === vehicleId && s.seatIndex === seatIndex);
+    for (const s of targets) {
+      await db.vehicleSeats.delete(s.id);
     }
-    // Also delete by deterministic IDs to cover sample data variants
     await db.vehicleSeats.delete(`seat-${vehicleId}-${seatIndex}`);
     const shortVehNum = vehicleId.replace('veh-', '');
     await db.vehicleSeats.delete(`seat-${shortVehNum}-${seatIndex}`);
@@ -856,65 +909,35 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
                           )}
                         </div>
 
-                        {/* ROW 2: MIDDLE ROW (Passengers) */}
-                        <div className="grid grid-cols-2 gap-3 w-full mb-3">
-                          <SeatDropZone
-                            role="passenger"
-                            seatIndex={2}
-                            guest={getSeatGuest(2)}
-                            onAssignGuest={(gId) =>
-                              assignGuestToSeat(vehicle.id, 2, 'passenger', gId)
-                            }
-                            onUnassign={() => handleUnassignSeat(vehicle.id, 2)}
-                            onClick={() => openSeatModal(vehicle.id, 2, 'passenger')}
-                          />
-                          <SeatDropZone
-                            role="passenger"
-                            seatIndex={3}
-                            guest={getSeatGuest(3)}
-                            onAssignGuest={(gId) =>
-                              assignGuestToSeat(vehicle.id, 3, 'passenger', gId)
-                            }
-                            onUnassign={() => handleUnassignSeat(vehicle.id, 3)}
-                            onClick={() => openSeatModal(vehicle.id, 3, 'passenger')}
-                          />
-                        </div>
-
-                        {/* ROW 3: REAR ROW (If SUV 7-seater or Van) */}
-                        {vehicle.category === 'suv_7' && (
-                          <div className="grid grid-cols-3 gap-2 w-full mb-3">
-                            <SeatDropZone
-                              role="passenger"
-                              seatIndex={4}
-                              guest={getSeatGuest(4)}
-                              onAssignGuest={(gId) =>
-                                assignGuestToSeat(vehicle.id, 4, 'passenger', gId)
-                              }
-                              onUnassign={() => handleUnassignSeat(vehicle.id, 4)}
-                              onClick={() => openSeatModal(vehicle.id, 4, 'passenger')}
-                            />
-                            <SeatDropZone
-                              role="passenger"
-                              seatIndex={5}
-                              guest={getSeatGuest(5)}
-                              onAssignGuest={(gId) =>
-                                assignGuestToSeat(vehicle.id, 5, 'passenger', gId)
-                              }
-                              onUnassign={() => handleUnassignSeat(vehicle.id, 5)}
-                              onClick={() => openSeatModal(vehicle.id, 5, 'passenger')}
-                            />
-                            <SeatDropZone
-                              role="passenger"
-                              seatIndex={6}
-                              guest={getSeatGuest(6)}
-                              onAssignGuest={(gId) =>
-                                assignGuestToSeat(vehicle.id, 6, 'passenger', gId)
-                              }
-                              onUnassign={() => handleUnassignSeat(vehicle.id, 6)}
-                              onClick={() => openSeatModal(vehicle.id, 6, 'passenger')}
-                            />
+                        {/* PASSENGER ROWS DYNAMICALLY GENERATED (Supports Sedan 4/5, SUV 6/7, Van 12/14/16, Bus) */}
+                        {getVehiclePassengerRows(vehicle.category).map((rowSeats, rIdx) => (
+                          <div
+                            key={rIdx}
+                            className={`grid gap-2 w-full mb-2.5 ${
+                              rowSeats.length === 2
+                                ? 'grid-cols-2'
+                                : rowSeats.length === 3
+                                ? 'grid-cols-3'
+                                : rowSeats.length === 4
+                                ? 'grid-cols-4'
+                                : 'grid-cols-3'
+                            }`}
+                          >
+                            {rowSeats.map((seatIdx) => (
+                              <SeatDropZone
+                                key={seatIdx}
+                                role="passenger"
+                                seatIndex={seatIdx}
+                                guest={getSeatGuest(seatIdx)}
+                                onAssignGuest={(gId) =>
+                                  assignGuestToSeat(vehicle.id, seatIdx, 'passenger', gId)
+                                }
+                                onUnassign={() => handleUnassignSeat(vehicle.id, seatIdx)}
+                                onClick={() => openSeatModal(vehicle.id, seatIdx, 'passenger')}
+                              />
+                            ))}
                           </div>
-                        )}
+                        ))}
 
                         {/* PICTORIAL BOOT / LUGGAGE STORAGE ZONE */}
                         <div className="w-full bg-stone-200/90 border-2 border-dashed border-stone-400 rounded-2xl p-2.5 mt-1 flex items-center justify-between text-xs">
@@ -1077,363 +1100,336 @@ export const TravelManager: React.FC<TravelManagerProps> = ({
         </div>
       )}
 
-      {/* Add / Edit Vehicle Modal with Country Presets */}
-      {isVehicleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                {editingVehicle ? 'Edit Vehicle' : 'Add Vehicle to Fleet'}
-              </h3>
-              <button
-                onClick={() => setIsVehicleModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveVehicle} className="p-6 space-y-4 overflow-y-auto">
-              {/* Country Presets Selector */}
-              <div className="space-y-1.5 bg-theme-background/70 p-3 rounded-2xl border border-theme-border/60">
-                <label className="text-xs font-bold text-theme-primary flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Choose Popular Vehicle Preset (Grouped by Country)</span>
-                </label>
-                <select
-                  onChange={(e) => {
-                    const selectedVal = e.target.value;
-                    if (!selectedVal) return;
-                    for (const group of COUNTRY_VEHICLE_PRESETS) {
-                      const found = group.vehicles.find((v) => v.name === selectedVal);
-                      if (found) {
-                        handleApplyVehiclePreset(found);
-                        break;
-                      }
-                    }
-                  }}
-                  defaultValue=""
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-card text-theme-text-main text-xs font-semibold cursor-pointer"
-                >
-                  <option value="" disabled>
-                    -- Select Country Model Preset --
-                  </option>
-                  {COUNTRY_VEHICLE_PRESETS.map((group) => (
-                    <optgroup key={group.country} label={`${group.flag} ${group.country}`}>
-                      {group.vehicles.map((v) => (
-                        <option key={v.name} value={v.name}>
-                          {v.name} ({v.driveSide})
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Vehicle Name / Label *</label>
-                <input
-                  type="text"
-                  value={vehicleName}
-                  onChange={(e) => setVehicleName(e.target.value)}
-                  placeholder="e.g. Innova Crysta Shuttle 1"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Seating Category</label>
-                  <select
-                    value={vehicleCategory}
-                    onChange={(e) => setVehicleCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  >
-                    <option value="sedan_5">Sedan (5 Seater: 1 Driver + 4 Pass)</option>
-                    <option value="suv_7">SUV (7 Seater: 1 Driver + 6 Pass)</option>
-                    <option value="van_14">Van / Traveller (14 Seater)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Drive Side Steering</label>
-                  <select
-                    value={driveSide}
-                    onChange={(e) => setDriveSide(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-semibold"
-                  >
-                    <option value="RHD">Right-Hand Drive (RHD - India, UK, Aus)</option>
-                    <option value="LHD">Left-Hand Drive (LHD - USA, Canada)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">License Plate Number</label>
-                  <input
-                    type="text"
-                    value={plateNumber}
-                    onChange={(e) => setPlateNumber(e.target.value)}
-                    placeholder="e.g. RJ 27 TA 1102"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Luggage Boot Capacity (Bags)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="20"
-                    value={luggageCapacityBags}
-                    onChange={(e) => setLuggageCapacityBags(parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Driver Name</label>
-                  <input
-                    type="text"
-                    value={driverName}
-                    onChange={(e) => setDriverName(e.target.value)}
-                    placeholder="e.g. Mukesh Kumar"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Driver Phone</label>
-                  <input
-                    type="tel"
-                    value={driverPhone}
-                    onChange={(e) => setDriverPhone(e.target.value)}
-                    placeholder="+91 98765 00000"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsVehicleModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-                >
-                  {editingVehicle ? 'Save Changes' : 'Add Vehicle'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Seat Assignment Modal (Click-to-Assign) */}
-      {isSeatAssignModalOpen && targetSeat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-base text-theme-text-main">
-                {targetSeat.role === 'driver'
-                  ? 'Assign Driver'
-                  : targetSeat.role === 'co_driver'
-                  ? 'Assign Co-Driver Seat'
-                  : `Assign Passenger (Seat ${targetSeat.seatIndex + 1})`}
-              </h3>
-              <button
-                onClick={() => setIsSeatAssignModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveModalSeat} className="p-6 space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Select Guest</label>
-                <select
-                  value={selectedGuestForSeat}
-                  onChange={(e) => setSelectedGuestForSeat(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs cursor-pointer"
-                >
-                  <option value="">-- Unassigned (Empty Seat) --</option>
-                  {guests?.map((g) => {
-                    const party = parties?.find((p) => p.id === g.partyId);
-                    return (
-                      <option key={g.id} value={g.id}>
-                        {g.name} ({g.ageCategory}) - {party?.partyName}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              <div className="pt-2 border-t border-theme-border flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await handleUnassignSeat(targetSeat.vehicleId, targetSeat.seatIndex);
-                    setIsSeatAssignModalOpen(false);
-                  }}
-                  className="text-xs font-semibold text-rose-600 hover:underline"
-                >
-                  Clear Seat
-                </button>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsSeatAssignModalOpen(false)}
-                    className="px-3 py-1.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-muted"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-                  >
-                    Save Seat
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Add Travel Arrival Modal */}
-      {isTravelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                Log Travel Arrival
-              </h3>
-              <button
-                onClick={() => setIsTravelModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveTravel} className="p-6 space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Guest Party *</label>
-                <select
-                  value={travelPartyId}
-                  onChange={(e) => setTravelPartyId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  required
-                >
-                  {parties?.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.partyName} ({p.primaryContactName})
+      {/* Add / Edit Vehicle Drawer with Country Presets */}
+      <NestedScreen
+        isOpen={isVehicleModalOpen}
+        onClose={() => setIsVehicleModalOpen(false)}
+        title={editingVehicle ? 'Edit Vehicle' : 'Add Vehicle to Fleet'}
+        subtitle="Pillar 5: Configure vehicle capacity, steering drive side, and luggage storage"
+        mode="drawer"
+        width="xl"
+        level={1}
+      >
+        <form onSubmit={handleSaveVehicle} className="space-y-4">
+          {/* Country Presets Selector */}
+          <div className="space-y-1.5 bg-theme-background/70 p-3 rounded-2xl border border-theme-border/60">
+            <label className="text-xs font-bold text-theme-primary flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Choose Popular Vehicle Preset (Grouped by Country)</span>
+            </label>
+            <select
+              onChange={(e) => {
+                const selectedVal = e.target.value;
+                if (!selectedVal) return;
+                for (const group of COUNTRY_VEHICLE_PRESETS) {
+                  const found = group.vehicles.find((v) => v.name === selectedVal);
+                  if (found) {
+                    handleApplyVehiclePreset(found);
+                    break;
+                  }
+                }
+              }}
+              defaultValue=""
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-card text-theme-text-main text-xs font-semibold cursor-pointer"
+            >
+              <option value="" disabled>
+                -- Select Country Model Preset --
+              </option>
+              {COUNTRY_VEHICLE_PRESETS.map((group) => (
+                <optgroup key={group.country} label={`${group.flag} ${group.country}`}>
+                  {group.vehicles.map((v) => (
+                    <option key={v.name} value={v.name}>
+                      {v.name} ({v.driveSide})
                     </option>
                   ))}
-                </select>
-              </div>
+                </optgroup>
+              ))}
+            </select>
+          </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Mode</label>
-                  <select
-                    value={travelMode}
-                    onChange={(e) => setTravelMode(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  >
-                    <option value="flight">Flight</option>
-                    <option value="train">Train</option>
-                    <option value="personal_car">Personal Car</option>
-                    <option value="bus">Bus</option>
-                  </select>
-                </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Vehicle Name / Label *</label>
+            <input
+              type="text"
+              value={vehicleName}
+              onChange={(e) => setVehicleName(e.target.value)}
+              placeholder="e.g. Innova Crysta Shuttle 1"
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              required
+            />
+          </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Flight / Train No.</label>
-                  <input
-                    type="text"
-                    value={carrierNumber}
-                    onChange={(e) => setCarrierNumber(e.target.value)}
-                    placeholder="e.g. 6E 2341"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Seating Category</label>
+              <select
+                value={vehicleCategory}
+                onChange={(e) => setVehicleCategory(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              >
+                <option value="sedan_5">Sedan (5 Seater: 1 Driver + 4 Pass)</option>
+                <option value="suv_7">SUV (7 Seater: 1 Driver + 6 Pass)</option>
+                <option value="van_12">Van / Minibus (12 Seater)</option>
+                <option value="van_14">Van / Traveller (14 Seater)</option>
+                <option value="van_16">Van / Minibus (16 Seater)</option>
+              </select>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Origin City</label>
-                  <input
-                    type="text"
-                    value={originCity}
-                    onChange={(e) => setOriginCity(e.target.value)}
-                    placeholder="e.g. Mumbai"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Drive Side Steering</label>
+              <select
+                value={driveSide}
+                onChange={(e) => setDriveSide(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-semibold"
+              >
+                <option value="RHD">Right-Hand Drive (RHD - India, UK, Aus)</option>
+                <option value="LHD">Left-Hand Drive (LHD - USA, Canada)</option>
+              </select>
+            </div>
+          </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Destination Hub</label>
-                  <input
-                    type="text"
-                    value={destinationHub}
-                    onChange={(e) => setDestinationHub(e.target.value)}
-                    placeholder={`e.g. ${wedding.city} Airport`}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">License Plate Number</label>
+              <input
+                type="text"
+                value={plateNumber}
+                onChange={(e) => setPlateNumber(e.target.value)}
+                placeholder="e.g. RJ 27 TA 1102"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm font-mono"
+              />
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Arrival Date & Time</label>
-                <input
-                  type="datetime-local"
-                  value={travelDateTime}
-                  onChange={(e) => setTravelDateTime(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  required
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Luggage Boot Capacity (Bags)</label>
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={luggageCapacityBags}
+                onChange={(e) => setLuggageCapacityBags(parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+          </div>
 
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Driver Name</label>
+              <input
+                type="text"
+                value={driverName}
+                onChange={(e) => setDriverName(e.target.value)}
+                placeholder="e.g. Mukesh Kumar"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Driver Phone</label>
+              <input
+                type="tel"
+                value={driverPhone}
+                onChange={(e) => setDriverPhone(e.target.value)}
+                placeholder="+91 98765 00000"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsVehicleModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
+            >
+              {editingVehicle ? 'Save Changes' : 'Add Vehicle'}
+            </button>
+          </div>
+        </form>
+      </NestedScreen>
+
+      {/* Seat Assignment Drawer (Click-to-Assign) */}
+      <NestedScreen
+        isOpen={isSeatAssignModalOpen && !!targetSeat}
+        onClose={() => setIsSeatAssignModalOpen(false)}
+        title={
+          targetSeat?.role === 'driver'
+            ? 'Assign Driver'
+            : targetSeat?.role === 'co_driver'
+            ? 'Assign Co-Driver Seat'
+            : `Assign Passenger (Seat ${(targetSeat?.seatIndex ?? 0) + 1})`
+        }
+        subtitle="Select a guest to seat or click Clear Seat"
+        mode="drawer"
+        width="md"
+        level={1}
+      >
+        {targetSeat && (
+          <form onSubmit={handleSaveModalSeat} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Select Guest</label>
+              <select
+                value={selectedGuestForSeat}
+                onChange={(e) => setSelectedGuestForSeat(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs cursor-pointer"
+              >
+                <option value="">-- Unassigned (Empty Seat) --</option>
+                {guests?.map((g) => {
+                  const party = parties?.find((p) => p.id === g.partyId);
+                  return (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.ageCategory}) - {party?.partyName}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div className="pt-4 border-t border-theme-border flex items-center justify-between">
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleUnassignSeat(targetSeat.vehicleId, targetSeat.seatIndex);
+                  setIsSeatAssignModalOpen(false);
+                }}
+                className="text-xs font-semibold text-rose-600 hover:underline"
+              >
+                Clear Seat
+              </button>
+
+              <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsTravelModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
+                  onClick={() => setIsSeatAssignModalOpen(false)}
+                  className="px-3 py-1.5 rounded-xl border border-theme-border text-xs font-semibold text-theme-text-muted"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
+                  className="px-4 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
                 >
-                  Save Arrival
+                  Save Seat
                 </button>
               </div>
-            </form>
+            </div>
+          </form>
+        )}
+      </NestedScreen>
+
+      {/* Add Travel Arrival Drawer */}
+      <NestedScreen
+        isOpen={isTravelModalOpen}
+        onClose={() => setIsTravelModalOpen(false)}
+        title="Log Travel Arrival"
+        subtitle="Track incoming guest flight or train arrivals for shuttle fleet coordination"
+        mode="drawer"
+        width="lg"
+        level={1}
+      >
+        <form onSubmit={handleSaveTravel} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Guest Party *</label>
+            <select
+              value={travelPartyId}
+              onChange={(e) => setTravelPartyId(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              required
+            >
+              {parties?.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.partyName} ({p.primaryContactName})
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Mode</label>
+              <select
+                value={travelMode}
+                onChange={(e) => setTravelMode(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              >
+                <option value="flight">Flight</option>
+                <option value="train">Train</option>
+                <option value="personal_car">Personal Car</option>
+                <option value="bus">Bus</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Flight / Train No.</label>
+              <input
+                type="text"
+                value={carrierNumber}
+                onChange={(e) => setCarrierNumber(e.target.value)}
+                placeholder="e.g. 6E 2341"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Origin City</label>
+              <input
+                type="text"
+                value={originCity}
+                onChange={(e) => setOriginCity(e.target.value)}
+                placeholder="e.g. Mumbai"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Destination Hub</label>
+              <input
+                type="text"
+                value={destinationHub}
+                onChange={(e) => setDestinationHub(e.target.value)}
+                placeholder={`e.g. ${wedding.city} Airport`}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Arrival Date & Time</label>
+            <input
+              type="datetime-local"
+              value={travelDateTime}
+              onChange={(e) => setTravelDateTime(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              required
+            />
+          </div>
+
+          <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsTravelModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
+            >
+              Save Arrival
+            </button>
+          </div>
+        </form>
+      </NestedScreen>
     </div>
   );
 };
