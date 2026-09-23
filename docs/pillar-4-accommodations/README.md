@@ -20,15 +20,16 @@ Pillar 4 provides:
 - Visual Status Indicator:
   - **Vacant Room**: Dashed border with emerald status badge and "+ Assign Guests" trigger.
   - **Occupied Room**: Solid card border with blue badge, allocated party name, side tag, check-in date range, and notes.
+- **Individual Assigned Guest Chips**: Room cards explicitly list the names of every individual assigned to that room (not just the party label), with distinct avatars/emojis for fast roll-call verification.
 
 ### 2.2 Room Attributes & Accessibility Markers
 - **Room Number & Floor/Wing**: Displays location details (e.g. *Ground Floor / East Wing*).
 - **Interconnecting Rooms Flag**: Renders a link icon indicating rooms that share an internal connecting door—ideal for parents with teenage children or large family units.
 - **Capacity Limits**: Tracks adult capacity (e.g. 2 adults) and child capacity (e.g. 1 extra bed/rollaway).
 
-### 2.3 Guest Room Allocation Drawer
-- Clicking "+ Assign Guests to Room" opens an allocation drawer.
-- Planners select a family party from Pillar 3.
+### 2.3 Guest Room Allocation & NestedScreen Drawers
+- All modals (Hotel creation, Room creation, and Guest Room Allocation) are standardized on `NestedScreen` slide-in right drawers with global `Esc` key handling and backdrop dismiss.
+- Planners select a family party or individual guests from Pillar 3.
 - Sets specific Check-In and Check-Out dates.
 - Records hospitality instructions (e.g. *Low floor requested for elder*, *Extra rollaway bed required*).
 

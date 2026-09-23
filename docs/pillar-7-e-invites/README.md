@@ -30,9 +30,10 @@ Instead of a modal popup, Pillar 7 provides an inline 3-column designer studio w
   - 6 Cultural Pre-defined Color Palettes.
   - Custom Color Pickers (Primary, Accent, Card Background, Card Border).
   - Background Watermark Theme selectors with repeating patterns and visible contrast.
+  - **Independent Watermark Pattern Color & Opacity (RGBA)**: Dedicated color picker with interactive opacity slider (2% to 80%), opacity presets (10%, 20%, 35%, 50%), and direct RGBA string input for fine-tuned watermark subtlety.
 - **Column 3 (Live Preview & Quick Export)**:
   - Real-time live card preview updating instantly as values or colors change.
-  - Watermark pattern rendered directly on the card background with corner ornaments and arch emblem.
+  - Watermark pattern rendered directly on the card background with corner ornaments and arch emblem using the dedicated RGBA pattern color.
   - **Full-Height Unclipped PNG Export**: Captures complete ceremony schedule with zero scrollbars or text clipping.
   - Standalone HTML export and formatted WhatsApp copy button.
 
