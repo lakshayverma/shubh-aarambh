@@ -97,7 +97,52 @@ export const COLOR_PALETTES = [
   },
 ];
 
-// Background Themes / Patterns with enhanced contrast and repeating backgroundSize
+// Helper to parse hex or existing rgba string and apply alpha multiplier
+export const parseColorToRgba = (colorStr: string, alphaMultiplier = 1): string => {
+  if (!colorStr) return `rgba(217, 119, 6, ${(0.2 * alphaMultiplier).toFixed(2)})`;
+  if (colorStr.startsWith('rgba(')) {
+    const match = colorStr.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/);
+    if (match) {
+      const [_, r, g, b, a] = match;
+      const computedAlpha = Math.min(1, Math.max(0, parseFloat(a) * alphaMultiplier));
+      return `rgba(${r}, ${g}, ${b}, ${computedAlpha.toFixed(2)})`;
+    }
+    return colorStr;
+  }
+  if (colorStr.startsWith('rgb(')) {
+    const match = colorStr.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    if (match) {
+      return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${(0.25 * alphaMultiplier).toFixed(2)})`;
+    }
+  }
+  let hex = colorStr.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex.split('').map((c) => c + c).join('');
+  }
+  if (hex.length === 6) {
+    const r = parseInt(hex.substring(0, 2), 16) || 0;
+    const g = parseInt(hex.substring(2, 4), 16) || 0;
+    const b = parseInt(hex.substring(4, 6), 16) || 0;
+    return `rgba(${r}, ${g}, ${b}, ${(0.25 * alphaMultiplier).toFixed(2)})`;
+  }
+  return colorStr;
+};
+
+export const hexAndOpacityToRgba = (hexColor: string, opacity: number): string => {
+  let hex = hexColor.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex.split('').map((c) => c + c).join('');
+  }
+  if (hex.length === 6) {
+    const r = parseInt(hex.substring(0, 2), 16) || 0;
+    const g = parseInt(hex.substring(2, 4), 16) || 0;
+    const b = parseInt(hex.substring(4, 6), 16) || 0;
+    return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
+  }
+  return hexColor;
+};
+
+// Background Themes / Patterns with enhanced contrast and RGBA support
 export const BACKGROUND_PATTERNS: {
   id: NonNullable<EInvite['backgroundTheme']>;
   name: string;
@@ -108,35 +153,35 @@ export const BACKGROUND_PATTERNS: {
     id: 'damask',
     name: 'Ornate Damask Arches',
     css: (color) =>
-      `radial-gradient(circle at 50% 50%, ${color}24 16%, transparent 17%), radial-gradient(circle at 0% 0%, ${color}1C 16%, transparent 17%), radial-gradient(circle at 100% 100%, ${color}1C 16%, transparent 17%)`,
+      `radial-gradient(circle at 50% 50%, ${parseColorToRgba(color, 1.2)} 16%, transparent 17%), radial-gradient(circle at 0% 0%, ${parseColorToRgba(color, 0.9)} 16%, transparent 17%), radial-gradient(circle at 100% 100%, ${parseColorToRgba(color, 0.9)} 16%, transparent 17%)`,
     backgroundSize: '40px 40px',
   },
   {
     id: 'mandala',
     name: 'Sacred Mandala Watermark',
     css: (color) =>
-      `radial-gradient(circle at 50% 35%, ${color}2E 0%, ${color}1E 24%, ${color}0D 50%, transparent 75%)`,
+      `radial-gradient(circle at 50% 35%, ${parseColorToRgba(color, 1.4)} 0%, ${parseColorToRgba(color, 1.0)} 24%, ${parseColorToRgba(color, 0.4)} 50%, transparent 75%)`,
     backgroundSize: '100% 100%',
   },
   {
     id: 'floral',
     name: 'Mughal Trellis Vine',
     css: (color) =>
-      `repeating-linear-gradient(45deg, ${color}20 0px, ${color}20 2px, transparent 2px, transparent 20px), repeating-linear-gradient(-45deg, ${color}20 0px, ${color}20 2px, transparent 2px, transparent 20px)`,
+      `repeating-linear-gradient(45deg, ${parseColorToRgba(color, 1.0)} 0px, ${parseColorToRgba(color, 1.0)} 2px, transparent 2px, transparent 20px), repeating-linear-gradient(-45deg, ${parseColorToRgba(color, 1.0)} 0px, ${parseColorToRgba(color, 1.0)} 2px, transparent 2px, transparent 20px)`,
     backgroundSize: '32px 32px',
   },
   {
     id: 'imperial_gradient',
     name: 'Imperial Radial Aura',
     css: (color) =>
-      `radial-gradient(circle at top right, ${color}35, transparent 65%), radial-gradient(circle at bottom left, ${color}2E, transparent 65%)`,
+      `radial-gradient(circle at top right, ${parseColorToRgba(color, 1.5)}, transparent 65%), radial-gradient(circle at bottom left, ${parseColorToRgba(color, 1.2)}, transparent 65%)`,
     backgroundSize: '100% 100%',
   },
   {
     id: 'clean_linen',
     name: 'Clean Linen Minimal',
     css: (color) =>
-      `repeating-linear-gradient(0deg, ${color}1A, ${color}1A 1px, transparent 1px, transparent 12px), repeating-linear-gradient(90deg, ${color}1A, ${color}1A 1px, transparent 1px, transparent 12px)`,
+      `repeating-linear-gradient(0deg, ${parseColorToRgba(color, 0.8)}, ${parseColorToRgba(color, 0.8)} 1px, transparent 1px, transparent 12px), repeating-linear-gradient(90deg, ${parseColorToRgba(color, 0.8)}, ${parseColorToRgba(color, 0.8)} 1px, transparent 1px, transparent 12px)`,
     backgroundSize: '24px 24px',
   },
   {
@@ -269,6 +314,9 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
   const [themeCardBg, setThemeCardBg] = useState('#FFFDF9');
   const [themeText, setThemeText] = useState('#271E1D');
   const [themeBorderColor, setThemeBorderColor] = useState('#D97706');
+  const [themePatternColor, setThemePatternColor] = useState('rgba(217, 119, 6, 0.22)');
+  const [patternBaseColor, setPatternBaseColor] = useState('#D97706');
+  const [patternOpacity, setPatternOpacity] = useState(0.22);
   const [backgroundTheme, setBackgroundTheme] = useState<
     NonNullable<EInvite['backgroundTheme']>
   >('damask');
@@ -316,6 +364,20 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       setThemeCardBg(inv.themeColors.cardBg || '#FFFDF9');
       setThemeText(inv.themeColors.text);
       setThemeBorderColor(inv.themeColors.borderColor || inv.themeColors.secondary);
+      
+      const patCol = inv.themeColors.patternColor || `rgba(217, 119, 6, 0.22)`;
+      setThemePatternColor(patCol);
+      const match = patCol.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/);
+      if (match) {
+        const r = parseInt(match[1]).toString(16).padStart(2, '0');
+        const g = parseInt(match[2]).toString(16).padStart(2, '0');
+        const b = parseInt(match[3]).toString(16).padStart(2, '0');
+        setPatternBaseColor(`#${r}${g}${b}`);
+        setPatternOpacity(parseFloat(match[4]));
+      } else if (patCol.startsWith('#')) {
+        setPatternBaseColor(patCol);
+        setPatternOpacity(0.22);
+      }
     } else {
       setUseCustomTheme(false);
       const defaultPal = COLOR_PALETTES[0];
@@ -325,6 +387,9 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       setThemeCardBg(defaultPal.cardBg);
       setThemeText(defaultPal.text);
       setThemeBorderColor(defaultPal.borderColor);
+      setPatternBaseColor(defaultPal.secondary);
+      setThemePatternColor(hexAndOpacityToRgba(defaultPal.secondary, 0.22));
+      setPatternOpacity(0.22);
     }
 
     setBackgroundTheme(inv.backgroundTheme || 'damask');
@@ -382,6 +447,8 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     setThemeCardBg(palette.cardBg);
     setThemeText(palette.text);
     setThemeBorderColor(palette.borderColor);
+    setPatternBaseColor(palette.secondary);
+    setThemePatternColor(hexAndOpacityToRgba(palette.secondary, patternOpacity));
     setUseCustomTheme(true);
   };
 
@@ -408,6 +475,9 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     setThemeCardBg(defaultPal.cardBg);
     setThemeText(defaultPal.text);
     setThemeBorderColor(defaultPal.borderColor);
+    setPatternBaseColor(defaultPal.secondary);
+    setThemePatternColor(hexAndOpacityToRgba(defaultPal.secondary, 0.22));
+    setPatternOpacity(0.22);
     setBackgroundTheme('damask');
 
     setActiveView('designer');
@@ -447,6 +517,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
             text: themeText,
             cardBg: themeCardBg,
             borderColor: themeBorderColor,
+            patternColor: themePatternColor,
           }
         : undefined,
       backgroundTheme,
@@ -509,11 +580,12 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
       cardBg: useCustomTheme ? themeCardBg : '#FFFDF9',
       text: useCustomTheme ? themeText : '#271E1D',
       borderColor: useCustomTheme ? themeBorderColor : defaultTmpl.borderColor,
+      patternColor: useCustomTheme ? themePatternColor : defaultTmpl.accentColor,
     };
 
     const patternObj =
       BACKGROUND_PATTERNS.find((p) => p.id === backgroundTheme) || BACKGROUND_PATTERNS[0];
-    const patternCss = patternObj.css(colors.secondary);
+    const patternCss = patternObj.css(colors.patternColor);
 
     const includedEvents = events?.filter((ev) => selectedEventIds.includes(ev.id)) || [];
 
@@ -657,11 +729,12 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
     cardBg: useCustomTheme ? themeCardBg : baseTemplateConfig.cardBg,
     background: useCustomTheme ? themeBackground : '#F8FAFC',
     text: useCustomTheme ? themeText : '#271E1D',
+    patternColor: useCustomTheme ? themePatternColor : baseTemplateConfig.accentColor,
   };
 
   const currentPattern =
     BACKGROUND_PATTERNS.find((p) => p.id === backgroundTheme) || BACKGROUND_PATTERNS[0];
-  const activePatternCss = currentPattern.css(effectiveTheme.accentColor);
+  const activePatternCss = currentPattern.css(effectiveTheme.patternColor);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -1131,11 +1204,12 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
             </div>
 
             {/* 2.3 Background Watermark Pattern */}
-            <div className="space-y-2">
+            <div className="space-y-3 p-3.5 rounded-2xl border border-theme-border bg-theme-background/60">
               <label className="text-xs font-bold text-theme-text-main flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 <span>3. Background Watermark Pattern</span>
               </label>
+
               <div className="grid grid-cols-2 gap-2">
                 {BACKGROUND_PATTERNS.map((pat) => (
                   <button
@@ -1157,6 +1231,112 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
                   </button>
                 ))}
               </div>
+
+              {/* Dedicated Watermark Pattern Color & Opacity (RGBA) */}
+              {backgroundTheme !== 'none' && (
+                <div className="pt-2.5 border-t border-theme-border/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-theme-text-main flex items-center gap-1">
+                      <Palette className="w-3 h-3 text-theme-secondary" />
+                      <span>Watermark Pattern Color & Opacity (RGBA)</span>
+                    </label>
+                    <span className="text-[10px] font-mono font-bold text-theme-primary bg-theme-card px-2 py-0.5 rounded-md border border-theme-border">
+                      {Math.round(patternOpacity * 100)}% Opacity
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-theme-text-muted">Base Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={patternBaseColor}
+                          onChange={(e) => {
+                            const newBase = e.target.value;
+                            setPatternBaseColor(newBase);
+                            setThemePatternColor(hexAndOpacityToRgba(newBase, patternOpacity));
+                            setUseCustomTheme(true);
+                          }}
+                          className="w-7 h-7 rounded-lg border border-theme-border cursor-pointer p-0.5 bg-theme-card"
+                        />
+                        <input
+                          type="text"
+                          value={patternBaseColor}
+                          onChange={(e) => {
+                            const newBase = e.target.value;
+                            setPatternBaseColor(newBase);
+                            if (newBase.startsWith('#') && (newBase.length === 4 || newBase.length === 7)) {
+                              setThemePatternColor(hexAndOpacityToRgba(newBase, patternOpacity));
+                              setUseCustomTheme(true);
+                            }
+                          }}
+                          className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-theme-text-muted">RGBA Output</label>
+                      <input
+                        type="text"
+                        value={themePatternColor}
+                        onChange={(e) => {
+                          setThemePatternColor(e.target.value);
+                          setUseCustomTheme(true);
+                        }}
+                        className="w-full text-xs font-mono px-2 py-1 rounded-lg border border-theme-border bg-theme-card"
+                        placeholder="rgba(217, 119, 6, 0.22)"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Opacity Slider */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-theme-text-muted">
+                      <span>Subtle Watermark</span>
+                      <span>Bold Pattern</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.02"
+                      max="0.80"
+                      step="0.02"
+                      value={patternOpacity}
+                      onChange={(e) => {
+                        const newOp = parseFloat(e.target.value);
+                        setPatternOpacity(newOp);
+                        setThemePatternColor(hexAndOpacityToRgba(patternBaseColor, newOp));
+                        setUseCustomTheme(true);
+                      }}
+                      className="w-full accent-theme-primary cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Quick Opacity presets */}
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] text-theme-text-muted">Presets:</span>
+                    {[0.08, 0.18, 0.30, 0.50].map((op) => (
+                      <button
+                        type="button"
+                        key={op}
+                        onClick={() => {
+                          setPatternOpacity(op);
+                          setThemePatternColor(hexAndOpacityToRgba(patternBaseColor, op));
+                          setUseCustomTheme(true);
+                        }}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                          Math.abs(patternOpacity - op) < 0.03
+                            ? 'bg-theme-primary text-white border-theme-primary'
+                            : 'bg-theme-card border-theme-border text-theme-text-muted hover:text-theme-text-main'
+                        }`}
+                      >
+                        {Math.round(op * 100)}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Save & Reset Actions */}
