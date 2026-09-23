@@ -25,6 +25,43 @@ function MainApp() {
 
   const inviteMatch = currentHash.match(/^#\/invite\/(.+)$/);
 
+  // Synchronize active wedding theme and custom colors to document root
+  useEffect(() => {
+    const root = document.documentElement;
+    if (activeWedding) {
+      if (activeWedding.theme) {
+        root.setAttribute('data-theme', activeWedding.theme);
+      }
+      if (activeWedding.customColors) {
+        const { primary, secondary, accent, background, card, textMain } = activeWedding.customColors;
+        if (primary) {
+          root.style.setProperty('--theme-primary', primary);
+          root.style.setProperty('--theme-primary-hover', primary);
+          root.style.setProperty('--theme-primary-light', `${primary}18`);
+        }
+        if (secondary) {
+          root.style.setProperty('--theme-secondary', secondary);
+          root.style.setProperty('--theme-secondary-light', `${secondary}20`);
+        }
+        if (accent) root.style.setProperty('--theme-accent', accent);
+        if (background) root.style.setProperty('--theme-background', background);
+        if (card) root.style.setProperty('--theme-card', card);
+        if (textMain) root.style.setProperty('--theme-text-main', textMain);
+      }
+    }
+    return () => {
+      root.style.removeProperty('--theme-primary');
+      root.style.removeProperty('--theme-primary-hover');
+      root.style.removeProperty('--theme-primary-light');
+      root.style.removeProperty('--theme-secondary');
+      root.style.removeProperty('--theme-secondary-light');
+      root.style.removeProperty('--theme-accent');
+      root.style.removeProperty('--theme-background');
+      root.style.removeProperty('--theme-card');
+      root.style.removeProperty('--theme-text-main');
+    };
+  }, [activeWedding]);
+
   if (inviteMatch) {
     const slug = inviteMatch[1];
     return (

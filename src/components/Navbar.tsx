@@ -124,7 +124,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-theme-card/95 backdrop-blur-md border-b border-theme-border shadow-xs transition-colors">
+      <header
+        className="sticky top-0 z-40 backdrop-blur-md border-b border-theme-border shadow-xs transition-all duration-300"
+        style={{
+          background: activeWedding
+            ? `linear-gradient(135deg, var(--theme-background) 0%, var(--theme-card) 55%, var(--theme-primary-light) 100%)`
+            : 'var(--theme-card)',
+        }}
+      >
+        {/* Festive Top Accent Strip matching Wedding Theme */}
+        {activeWedding && (
+          <div className="h-1 w-full bg-gradient-to-r from-theme-primary via-theme-secondary to-theme-accent opacity-90 transition-all" />
+        )}
         <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
           
           {/* Left: Brand & Wedding Switcher */}
