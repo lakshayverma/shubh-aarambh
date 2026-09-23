@@ -130,24 +130,16 @@ export const NestedScreen: React.FC<NestedScreenProps> = ({
                 <h2 className="text-lg sm:text-xl font-serif font-bold text-stone-900 dark:text-stone-100">
                   {title}
                 </h2>
-                {level === 2 && (
-                  <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 rounded-full">
-                    Nested
-                  </span>
-                )}
               </div>
               {subtitle && (
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-stone-400 hidden sm:inline-block font-mono bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700">
-                Esc
-              </span>
               <button
                 onClick={onClose}
                 className="p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg hover:bg-amber-100/50 dark:hover:bg-stone-800 transition-colors"
-                title="Close (Esc)"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
