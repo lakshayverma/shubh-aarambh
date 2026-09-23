@@ -27,16 +27,17 @@ Every agent operating in this codebase **must strictly adhere** to the following
 
 ### 1.3 Invariant 3: Drawer Component Standard (`<NestedScreen>`)
 - **NEVER** introduce ad-hoc modals with custom backdrop divs or full-page routing redirects for forms/detail views.
-- **ALWAYS** use `<NestedScreen>` from `src/components/common/NestedScreen.tsx` for slide-in panels.
+- **ALWAYS** use `<NestedScreen>` from `src/components/common/NestedScreen.tsx` for slide-in panels (refer to [`DESIGN.md` Section 5](./DESIGN.md#5-drawers-and-nested-screens-design-paradigm)).
 - Respect the nesting hierarchy:
   - `level={1}`: Primary drawers (e.g., Edit Guest Party, Add Hotel, Vehicle Details).
   - `level={2}`: Secondary/child drawers (e.g., Tag Manager opened from within Guest Edit).
 - `<NestedScreen>` contains built-in `Escape` key stack handling. When `level={2}` is open, pressing `Escape` only closes the Level 2 panel, preserving the Level 1 form state.
 
 ### 1.4 Invariant 4: React Flow 60fps Buffer Standard
-- In `@xyflow/react` canvases (`src/components/pillar6/SeatingChartsManager.tsx`), **NEVER** bind raw Dexie `useLiveQuery` arrays directly to `<ReactFlow nodes={...}>`. Doing so causes frame drops and sluggish dragging.
+- In `@xyflow/react` canvases (`src/components/pillar6/SeatingChartsManager.tsx` and `src/components/pillar2/FamilyManager.tsx`), **NEVER** bind raw Dexie `useLiveQuery` arrays directly to `<ReactFlow nodes={...}>`. Doing so causes frame drops and sluggish dragging.
 - State buffering via `useNodesState` and `useEdgesState` is mandatory. Synchronize Dexie records into local nodes only when remote/indexed data actually changes.
 - Custom node components (`TableNode`, `GuestNode`) must be wrapped in `React.memo` with custom equality comparators (`areTablePropsEqual`, `areGuestPropsEqual`).
+- See [`DESIGN.md` Section 6](./DESIGN.md#6-ui-heavy-spatial-design-flow-via-react-flow-xyflowreact) for detailed mathematical specifications (radial orbits, proximity thresholds, handle IDs).
 
 ### 1.5 Invariant 5: Cultural & Bilateral Integrity
 - Honor Indian wedding cultural concepts:
@@ -54,7 +55,8 @@ wedding-planner/
 ├── public/                     # PWA icons, manifest, favicon
 ├── src/
 │   ├── components/
-│   │   ├── common/             # Reusable UI primitives (NestedScreen, Tooltip, CustomToggle)
+│   │   ├── common/             # Tier 1: Agnostic primitives (NestedScreen, Tooltip, CustomToggle)
+│   │   ├── tags/               # Tier 2: Cross-cutting domain elements (TagBadge, TagSelector, TagManagerModal)
 │   │   ├── pillar1/            # Dates & Ceremonies (EventsTimeline.tsx)
 │   │   ├── pillar2/            # Family Information & Hierarchy (FamilyManager.tsx)
 │   │   ├── pillar3/            # Unified Guests & RSVPs (GuestListManager.tsx)
@@ -62,9 +64,8 @@ wedding-planner/
 │   │   ├── pillar5/            # Travel & Vehicle Fleet (TravelManager.tsx)
 │   │   ├── pillar6/            # Seating Charts & Floor Plan (SeatingChartsManager.tsx)
 │   │   ├── pillar7/            # Festive E-Invites Studio (EInvitesManager.tsx)
-│   │   ├── tags/               # TagBadge, TagSelector, TagManagerModal
-│   │   ├── Navbar.tsx          # Unified Top Navigation Bar
-│   │   ├── WeddingDashboard.tsx# Main tab orchestrator
+│   │   ├── Navbar.tsx          # Tier 4: Unified Top Navigation Bar
+│   │   ├── WeddingDashboard.tsx# Tier 4: Main tab orchestrator
 │   │   └── ...                 # Modals (ThemeSelector, WeddingSettings, CreateWedding)
 │   ├── context/
 │   │   ├── ThemeContext.tsx    # Global theme provider (5 cultural palettes)

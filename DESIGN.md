@@ -1,9 +1,10 @@
 # Vivah Planner — System Architecture & Design Specification
 
-> **Version**: 1.0.0  
+> **Version**: 1.1.0  
 > **Status**: Production Release  
 > **Application Type**: 100% Client-Side Offline-First Progressive Web App (PWA)  
 > **Target Audience**: Professional Wedding Planners, Couple Families (*Ladkiwale* & *Ladkewale*), Hospitality Coordinators  
+> **Companion Document**: [`AGENTS.md`](./AGENTS.md)  
 
 ---
 
@@ -66,7 +67,7 @@ The visual theme is powered by CSS custom properties defined in `:root` and togg
   --theme-background: #FCFBF7;      /* Warm Ivory Canvas */
   --theme-card: #FFFFFF;            /* Pure Card Surface */
   --theme-border: #E8DFD8;          /* Warm Sand Border */
-  --theme-text-main: #271E1D;       /* Deep Charcoal Charcoal */
+  --theme-text-main: #271E1D;       /* Deep Charcoal */
   --theme-text-muted: #786B69;      /* Muted Warm Slate */
 }
 ```
@@ -92,70 +93,203 @@ In addition to global themes, every individual `Wedding` record supports a `cust
 
 ---
 
-## 4. UI Architecture & Navigation Patterns
+## 4. Component Structure & Architectural Hierarchy
+
+Vivah Planner follows a strictly tiered, modular component architecture that isolates concerns, prevents cross-pillar coupling, and guarantees maintainability across large feature expansions.
 
 ```
-+-----------------------------------------------------------------------------------------+
-| [Vivah Planner]  | [Switch Wedding v]  | [Dec 12-15 - Udaipur]  | [Offline *] [Theme] [*] |
-+-----------------------------------------------------------------------------------------+
-| [Pillar 1: Dates] [Pillars 2&3: Guests & Family] [Pillar 4: Rooms] [Pillar 5: Travel]   |
-| [Pillar 6: Seating Charts] [Pillar 7: Festive E-Invites]                                |
-+-----------------------------------------------------------------------------------------+
-|                                                                                         |
-|                      ACTIVE PILLAR WORKSPACE (max-w-[1720px])                           |
-|                                                                                         |
-|   +---------------------------------------------------------------------------------+   |
-|   |  Sub-navigation / Filters / Search / Action Bar                                 |   |
-|   +---------------------------------------------------------------------------------+   |
-|   |                                                                                 |   |
-|   |  Content Area (Spreadsheet Tables, Drag-and-Drop Chassis, React Flow Canvases) |   |
-|   |                                                                                 |   |
-|   +---------------------------------------------------------------------------------+   |
-|                                                                                         |
-+-----------------------------------------------------------------------------------------+
-| SLIDE-IN RIGHT DRAWER (NestedScreen Level 1)                                            |
-|   +---------------------------------------------------------------------------------+   |
-|   | Title: Edit Guest Party                           [Esc / X]                     |   |
-|   | Forms, Multi-member sub-forms, Role assignments                                 |   |
-|   +---------------------------------------------------------------------------------+   |
-+-----------------------------------------------------------------------------------------+
+src/
+├── components/
+│   ├── common/                  # Tier 1: Agnostic UI Primitives (NestedScreen, Tooltip, CustomToggle)
+│   ├── tags/                    # Tier 2: Cross-Cutting Domain Utilities (TagBadge, TagSelector, TagManager)
+│   ├── pillar1/ ... pillar7/    # Tier 3: Isolated Domain Pillar Controllers (Events, Family, Guests, Rooms, Fleet, Seating, Invites)
+│   ├── Navbar.tsx               # Tier 4: Global App Shell & Navigation
+│   ├── WeddingDashboard.tsx     # Tier 4: Primary Tab Orchestrator & View Switcher
+│   └── WeddingCommandCenter.tsx # Tier 4: Cross-Pillar High-Level KPI Summary
+├── context/                     # Shared React State (ThemeContext, WeddingContext)
+├── db/                          # Offline Storage Layer (Dexie.js schema, indexes, transactions, backup)
+└── utils/                       # Pure Utility Functions (tagUtils, formatting, geometry)
 ```
 
-### 4.1 Unified Top Navigation Bar
-The header merges wedding context and global utilities into a single top bar:
-- **Brand Title**: Vivah Planner logo with dynamic theme-colored gradient accent.
-- **Wedding Switcher Dropdown**: Displays the active wedding title, with a list of all existing weddings and a prominent `+ New Wedding` button.
-- **Wedding Metadata Chip**: Shows the active wedding's primary date and host city.
-- **Utility Cluster**:
-  - `OfflineStatusIndicator`: Real-time network listener (`navigator.onLine`) indicating offline persistence.
-  - `ThemeSelectorModal`: Quick switcher across the 5 cultural themes.
-  - `WeddingSettingsModal`: Gear icon opening backup/restore (JSON import/export), wedding configuration, and theme customization.
-  - `InstallPwaBanner`: In-app PWA install trigger button when `beforeinstallprompt` is active.
+### 4.1 Component Tiers and Contracts
 
-### 4.2 Standardized `NestedScreen` Drawer Architecture
-All detail views, entity creation forms, and editors are implemented via `<NestedScreen>` (`src/components/common/NestedScreen.tsx`):
-- **Slide-in Right Animation**: Natural, non-jarring entry preserving workspace scroll position.
-- **Configurable Widths**: `md` (28rem), `lg` (32rem), `xl` (36rem), `2xl` (42rem), `3xl` (56rem), `4xl` (64rem), `full`.
-- **Keyboard Navigation**: Global `Escape` listener. When a Level 2 drawer is mounted (`data-nested-level="2"`), pressing `Escape` closes the Level 2 drawer only, preserving Level 1 state.
-- **Scroll Containment**: Sticky drawer header, scrollable body (`overflow-y-auto`), and sticky footer action buttons (`Save`, `Cancel`).
+#### Tier 1: Agnostic UI Primitives (`src/components/common/`)
+- Reusable, accessible UI components with zero wedding-specific business logic.
+- **`<NestedScreen>`**: Universal slide-in drawer and modal engine with stacked Esc handling.
+- **`<Tooltip>`**: Portal-based, z-index resilient contextual help bubble with auto-positioning.
+- **`<CustomToggle>`**: Accessible switch component for bilateral options (e.g. RHD vs LHD, Attending vs Unseated).
+- **`<CustomSelect>`**: Styled dropdown compatible with dynamic CSS variables.
 
-### 4.3 15% Left Tray / 85% Main Canvas Workspace
-Adopted in **Pillar 5 (Travel Fleet Planner)** and **Pillar 6 (Seating Charts)**:
-- **Left Tray (15–20% width)**: Sticky guest selector sidebar with search bar, unseated/seated filters, side badges (*Ladkiwale* / *Ladkewale* / *Mutual*), and drag handles.
-- **Right Workspace (80–85% width)**: Interactive drop canvas. In Travel, it renders vehicle chassis grids with seat slots; in Seating, it renders the `@xyflow/react` infinite floor plan canvas.
+#### Tier 2: Cross-Cutting Domain Elements (`src/components/tags/`)
+- Domain-aware components used across multiple pillars.
+- **`<TagBadge>`**: Renders tags with custom Lucide vector icons, color chips, and dismiss buttons.
+- **`<TagSelector>`**: Multi-select dropdown filtering by Wedding vs Global scope.
+- **`<TagManagerModal>`**: 2-level drawer for tag cataloging and authoring.
 
-### 4.4 2-Level Tag Management System
-Tags categorize dietary preferences, priority VIPs, logistics leads, and core family branches.
-- **Level 1 Drawer**: Paginated catalog of all active tags, displaying name, icon, color badge, scope (`global` vs `wedding`), and usage count.
-- **Level 2 Drawer**: Modal form to create or edit tags:
-  - Interactive scope switch (`Wedding` vs `Global`).
-  - Curated Lucide Icon Picker (Star, Heart, Shield, Crown, Sparkles, Music, Wine, etc.).
-  - Color Picker with cultural presets and hex input.
-- **Automatic Tag Sync**: Toggling `isCoreFamily` or assigning an operational role automatically attaches the corresponding tag to the guest via `syncMemberTags`.
+#### Tier 3: Domain Pillar Controllers (`src/components/pillar[1-7]/`)
+- Each pillar lives in its own directory with dedicated subcomponents and types.
+- Pillar managers receive `wedding: Wedding` as their primary prop and read/write to Dexie independently via indexed queries.
+- Pillar managers never import other pillar components directly; cross-cutting operations are bridged via the database schema and shared tags.
+
+#### Tier 4: Global Shell & Orchestration
+- **`<Navbar>`**: Unified header housing wedding context, switcher dropdown, and global modals.
+- **`<WeddingDashboard>`**: Orchestrates active pillar selection, tab transitions, and responsive containers.
+- **`<WeddingContext>`**: Supplies the active `wedding` entity, wedding switcher dispatcher, and reload triggers.
 
 ---
 
-## 5. Architectural Blueprint of the 7 Pillars
+## 5. Drawers and Nested Screens Design Paradigm
+
+```
++-----------------------------------------------------------------------------------------------+
+| ACTIVE WORKSPACE (Guest List Spreadsheet / Seating Canvas)                                     |
+|                                                                                               |
+|   +------------------------------------+  +-----------------------------------------------+   |
+|   | Guest Table / Vehicle Fleet Grid   |  | LEVEL 1 DRAWER (e.g., Edit Guest Party)        |   |
+|   |                                    |  | Width: xl (36rem) | z-index: 50               |   |
+|   | Background dimmed (black/50)       |  |                                               |   |
+|   | Remains fully mounted              |  |   [Open Tag Manager button]                   |   |
+|   | Preserves scroll position          |  |   |                                           |   |
+|   |                                    |  |   v                                           |   |
+|   |                                    |  | +-------------------------------------------+ |   |
+|   |                                    |  | | LEVEL 2 DRAWER (e.g., Tag Manager Modal)  | |   |
+|   |                                    |  | | Width: lg (32rem) | z-index: 70           | |   |
+|   |                                    |  | | Background dimmed (black/60)              | |   |
+|   |                                    |  | | Esc -> closes Level 2 only                | |   |
+|   |                                    |  | | Level 1 form state 100% preserved         | |   |
+|   +------------------------------------+  +-----------------------------------------------+   |
++-----------------------------------------------------------------------------------------------+
+```
+
+### 5.1 The Architectural Philosophy: Why Drawers over Modals or Routes?
+Indian wedding planning involves dense, interconnected operations. A user editing a guest party may realize that an uncle needs a new "VIP Airport Escort" tag, or that a member needs specific dietary notes.
+
+- **Why Not Full-Page Routing?**
+  Full-page redirects dismantle ephemeral form state, wipe out active filters or scroll positions in large 2,000-row guest tables, and break user flow.
+- **Why Not Centered Pop-Up Modals?**
+  Centered modal dialogs feel claustrophobic, cut off tall multi-member forms on small screens, and create clumsy multi-layer modal stacking (where modals overlap and fight for z-indexes).
+- **The Drawer Advantage**:
+  Slide-in right drawers (`<NestedScreen>`) keep the primary workspace visible in the dimmed periphery, providing spatial grounding. Drawers provide full-height vertical scrolling (`h-screen overflow-y-auto`) ideal for detailed multi-field forms, while maintaining dedicated sticky headers and footers.
+
+### 5.2 Two-Tier Nesting Hierarchy (`level={1}` and `level={2}`)
+`<NestedScreen>` provides native two-level stacking:
+- **`level={1}` (Primary Drawers)**:
+  - Invoked directly from workspaces (e.g., *Edit Guest Party*, *Add Hotel*, *Vehicle Details*, *E-Invite Customizer*).
+  - Backing overlay: `bg-black/50 backdrop-blur-sm`, `z-[50]`.
+- **`level={2}` (Secondary / Child Drawers)**:
+  - Invoked from *inside* a Level 1 drawer (e.g., *Tag Manager* opened from Guest Edit, *Add New Custom Tag* opened from Tag Manager).
+  - Backing overlay: `bg-black/60 backdrop-blur-sm`, `z-[70]`.
+
+### 5.3 Coordinated `Escape` Key Stack Management
+To eliminate accidental form closure when working across nested drawers:
+1. Every `<NestedScreen>` mounts a global `keydown` listener.
+2. When `Escape` is pressed, a `level={1}` drawer inspects the DOM for `[data-nested-level="2"]`.
+3. If an active Level 2 drawer exists, the Level 1 listener **silently yields** (`return`), allowing the Level 2 drawer to handle the event and close itself.
+4. Only when no Level 2 drawer is active does pressing `Escape` dismiss the Level 1 drawer.
+5. Level 1 draft inputs remain entirely intact while Level 2 operations occur.
+
+### 5.4 Anatomical Specification of `<NestedScreen>`
+- **Header**: Sticky bar with font-serif title, contextual subtitle, and prominent close `X` button.
+- **Body**: Scrollable content container (`flex-1 overflow-y-auto p-6 space-y-6`) containing form fields, member cards, and tag selectors.
+- **Footer**: Sticky action bar (`px-6 py-4 border-t bg-stone-50/80`) housing primary actions (`Save`, `Update`, `Export`) and secondary actions (`Cancel`, `Delete`).
+- **Responsive Width Presets**:
+  - `md` (`max-w-md` / 28rem) — simple single-field prompts.
+  - `lg` (`max-w-lg` / 32rem) — tag creation, single-guest roles.
+  - `xl` (`max-w-xl` / 36rem) — standard entity editors (hotels, vehicles, event details).
+  - `2xl` (`max-w-2xl` / 42rem) — multi-member guest parties, chassis seat mappings.
+  - `3xl` (`max-w-4xl` / 56rem) — wide preview tools and import wizards.
+  - `4xl` (`max-w-5xl` / 64rem) — complex genealogical tree authoring.
+
+---
+
+## 6. UI-Heavy Spatial Design Flow via React Flow (`@xyflow/react`)
+
+```
++-----------------------------------------------------------------------------------------------+
+| SEATING CHARTS & FLOOR PLAN STUDIO (Pillar 6)                                                  |
++-----------------------------------------------------------------------------------------------+
+| 15% GUEST TRAY (Sticky) | 85% REACT FLOW CANVAS (Infinite Pan & Zoom)                         |
+|                         |                                                                     |
+| [Search Guests...]      |       [Stage Landmark]                                              |
+| Filters: Unseated/Side  |             ▲                                                       |
+|                         |             │                                                       |
+| +---------------------+ |       [Vedic Mandap]                                                |
+| | Guest: Rajesh Verma | |                                                                     |
+| | Side: Ladkewale     | |    +------------------+             (Radial Orbit Seat Handles)     |
+| | [Drag Handle :::]   | |    | Royal Diwan      |                  ○  ○  ○                    |
+| +---------------------+ |    | [S1] [S2][S3][S4]|               ○  +-------+  ○               |
+|                         |    +------------------+               ○  |Table 1|  ○ (Round 8)     |
+| Dragging near table     |         │        │                    ○  +-------+  ○               |
+| triggers proximity snap |         ▼        ▼                       ○  ○  ○                    |
+| (< 170px auto-connect)  |    [Guest 1]  [Guest 2]                                             |
+|                         |                                                                     |
+|                         | [MiniMap]                      [Controls: Zoom +/- | Fit | 2x PNG]  |
++-----------------------------------------------------------------------------------------------+
+```
+
+### 6.1 The Spatial Design Philosophy
+Indian wedding planning is fundamentally **spatial and topological**, not merely tabular. Banquet layouts, family seating hierarchies, sacred mandap orientations, and genealogical kinship cannot be adequately expressed through standard spreadsheets.
+
+Vivah Planner leverages `@xyflow/react` to provide two high-performance spatial canvases:
+1. **Pillar 2 (Genealogical Family Tree)**: Node-and-link generational hierarchy with kinship edges and interactive branch isolation.
+2. **Pillar 6 (Seating Charts & Floor Plan Studio)**: Physical venue floor planner with proximity snapping, custom venue furniture nodes, and seat assignment edges.
+
+### 6.2 The 15%–85% Spatial Workspace Pattern
+Both spatial studios utilize the 15% / 85% split layout:
+- **Left Tray (15–20% width)**: Sticky guest selector sidebar with search bar, unseated/seated filters, side badges (*Ladkiwale* / *Ladkewale* / *Mutual*), and drag handles.
+- **Right Workspace (80–85% width)**: Interactive drop canvas rendering infinite pan/zoom grids, dynamic venue nodes, and animated connection edges.
+
+### 6.3 Custom Venue Topologies & Node Geometries
+
+#### 1. The Royal Diwan Node (`royal_diwan` / `lounge_sofa`)
+Traditional low-seating royal lounge reserved for immediate family elders and VIPs.
+- Features **4 dedicated front-edge handle connectors (`S1`, `S2`, `S3`, `S4`)** distributed along the bottom margin.
+- Styled with regal crimson and gold border accents to visually distinguish VIP seating from standard tables.
+
+#### 2. Round Tables (`round_table` — 4, 6, 8, 10-seaters)
+- Designed with **Trigonometric Radial Seat Placement**:
+  Seat coordinates orbit the table perimeter mathematically:
+  $$\theta_i = \frac{2\pi \cdot i}{N}, \quad x_i = r \cdot \cos(\theta_i), \quad y_i = r \cdot \sin(\theta_i)$$
+- Seat handles are exposed radially along the circumference, allowing seated guest badges to orbit the table without visual collisions.
+
+#### 3. Banquet Tables (`rect_table` — 4 to 12-seaters)
+- Rectangular elongated tables with seats distributed along the top and bottom edges.
+- Supports head-of-table VIP placements and banquet dining rows.
+
+#### 4. Ceremonial Landmark Nodes
+- **Sacred Vedic Mandap**: Sacred fire altar for Pheras (`bg-gradient-to-br from-amber-600 via-rose-600 to-amber-700` with Flame icon).
+- **Grand Royal Stage**: Elevated couple reception stage with floral backdrop styling.
+- **Dance Floor & DJ**: High-energy dance zone for Sangeet night.
+- **Royal Cocktail Bar & Feast Buffet**: Key hospitality nodes for guest circulation.
+
+### 6.4 High-Performance 60fps Buffering Engine
+Interactive floor plans may contain 50+ tables and 300+ guest nodes. Direct binding of reactive database queries to React Flow causes frame drops and sluggish dragging. Vivah Planner solves this with a **three-tier performance architecture**:
+
+#### Tier A: Decoupling Dexie from the Render Loop
+- Canvas nodes and edges are maintained exclusively in local React state via `useNodesState` and `useEdgesState`.
+- Dragging, panning, and moving execute at native 60fps in memory without disk I/O.
+- Dexie persistence is debounced and committed **only on drag completion** (`onNodeDragStop` and `onSelectionDragStop`).
+
+#### Tier B: Custom Node Memoization Comparators
+Custom nodes (`TableNode` and `GuestNode`) are wrapped in `React.memo` with custom equality comparators (`areTablePropsEqual`, `areGuestPropsEqual`):
+- A table node re-renders **only** if its own coordinates, selection state, label, capacity, or assigned seat count changes.
+- Unaffected tables and guests skip re-rendering entirely during active drag operations.
+
+#### Tier C: Proximity Snapping Engine
+- Dragging a guest card within `170px` (`PROXIMITY_SNAP_DISTANCE`) of a table automatically calculates Euclidean distances:
+  $$d = \sqrt{(x_{\text{guest}} - x_{\text{table}})^2 + (y_{\text{guest}} - y_{\text{table}})^2}$$
+- On drop, the engine automatically finds the lowest available seat index and generates an animated connection edge, committing the seat assignment to Dexie atomically.
+
+### 6.5 High-Resolution 2x PNG Canvas Export
+Planners need physical printouts for venue staff and decorators. Vivah Planner implements an in-memory export pipeline:
+1. Calculates canvas boundary rectangles across all floor plan elements using `getNodesBounds`.
+2. Temporarily hides canvas control panels and minimap.
+3. Renders the viewport to high-resolution PNG using `html-to-image` at `pixelRatio: 2`.
+4. Triggers an instant in-memory browser download (`[wedding-title]-seating-plan.png`) with zero cloud processing.
+
+---
+
+## 7. Architectural Blueprint of the 7 Pillars
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -222,14 +356,10 @@ To eliminate disjointed family vs. guest management, Pillars 2 and 3 are merged 
 
 ### Pillar 6: React Flow Seating Charts & Proximity Snapping
 - **15–85% Floor Plan Workspace**: Left draggable guest tray; right `@xyflow/react` infinite canvas.
-- **Custom Indian Wedding Venue Nodes**:
-  - **Royal Diwan Node**: Traditional low-seating royal lounge with 4 front-edge seat connectors (S1..S4) reserved for elders and VIPs.
-  - **Round Tables**: 4, 6, 8, and 10-seater round tables with mathematically distributed radial handles and orbiting seated guest cards.
-  - **Banquet Tables**: 4 to 12-seater rectangular banquet tables with top and bottom row seat handles.
-  - **Landmark Nodes**: Sacred Vedic Mandap, Grand Royal Stage, Dance Floor & DJ, Royal Cocktail Bar, Feast Buffet.
+- **Custom Indian Wedding Venue Nodes**: Royal Diwan, Round Tables (4–10 seaters), Banquet Tables (4–12 seaters), Sacred Mandap, Stage, Dance Floor, Bar, Buffet.
 - **Proximity Auto-Connect**: Dragging a guest card within 170px of a table automatically snaps them into the nearest vacant seat with a colored connector edge.
 - **Manual Edge Connection**: Drag connector edges directly between seat handles and guest cards.
-- **60fps React Flow Buffer**: Decoupled local `useNodesState` and `useEdgesState` buffering with custom memoization to ensure smooth 60fps panning and dragging.
+- **60fps React Flow Buffer**: Decoupled local `useNodesState` and `useEdgesState` buffering with custom memoization.
 - **High-Res Floor Plan Export**: 2x resolution PNG download with automatic minimap and venue bounds calculation.
 
 ### Pillar 7: Festive E-Invites & 3-Column Designer Studio
@@ -240,11 +370,11 @@ To eliminate disjointed family vs. guest management, Pillars 2 and 3 are merged 
 
 ---
 
-## 6. Offline Data Architecture & Dexie Schema
+## 8. Offline Data Architecture & Dexie Schema
 
 Vivah Planner uses **Dexie.js 4** wrapping the browser's IndexedDB.
 
-### 6.1 Database Schema (`VivahPlannerDB` v1)
+### 8.1 Database Schema (`VivahPlannerDB` v1)
 
 ```typescript
 export class VivahDatabase extends Dexie {
@@ -269,7 +399,7 @@ export class VivahDatabase extends Dexie {
 }
 ```
 
-### 6.2 Primary Indexes & Query Patterns
+### 8.2 Primary Indexes & Query Patterns
 Indexes are configured in `src/db/index.ts` to guarantee sub-millisecond query performance:
 - `weddings`: `id, primaryDate, createdAt, updatedAt`
 - `events`: `id, weddingId, date, orderIndex`
@@ -282,13 +412,13 @@ Indexes are configured in `src/db/index.ts` to guarantee sub-millisecond query p
 - `floorPlanElements`: `id, seatingPlanId, type`
 - `tableSeatAssignments`: `id, elementId, guestId`
 
-### 6.3 Backup & Disaster Recovery
+### 8.3 Backup & Disaster Recovery
 - All tables are serialized to a single, formatted JSON structure (`vivah-planner-backup.json`) including database schema version, export timestamp, and table collections.
 - Restoring from backup wraps table clearances and bulk additions inside an atomic `db.transaction('rw', ...)` block to prevent partial or corrupted states.
 
 ---
 
-## 7. Performance & Scalability Guardrails
+## 9. Performance & Scalability Guardrails
 
 1. **Reactive Subscriptions (`useLiveQuery`)**: UI components subscribe to targeted Dexie queries filtered by `weddingId`. Subscriptions must always use indexed `.where()` clauses rather than scanning entire tables with `.toArray()`.
 2. **React Flow 60fps Optimization**: In canvas components, state is buffered locally using `useNodesState` and `useEdgesState`. Custom memo comparators (`areTablePropsEqual`, `areGuestPropsEqual`) prevent global canvas re-renders when a single node is dragged.
