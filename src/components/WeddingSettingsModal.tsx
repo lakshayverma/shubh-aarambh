@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { Wedding, WeddingCustomColors } from '../db/schema';
 import { useWedding } from '../context/WeddingContext';
+import { NestedScreen } from './common/NestedScreen';
 import {
-  Settings,
   Palette,
   Sparkles,
   Check,
-  X,
-  Heart,
   Save,
   RefreshCw,
 } from 'lucide-react';
@@ -107,8 +105,6 @@ export const WeddingSettingsModal: React.FC<WeddingSettingsModalProps> = ({
     wedding.customColors?.background || '#FCFBF7'
   );
 
-  if (!isOpen) return null;
-
   const handleApplyPreset = (preset: { name: string; colors: WeddingCustomColors }) => {
     setPrimaryColor(preset.colors.primary);
     setSecondaryColor(preset.colors.secondary);
@@ -118,281 +114,309 @@ export const WeddingSettingsModal: React.FC<WeddingSettingsModalProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const customColors: WeddingCustomColors = {
-      primary: primaryColor,
-      secondary: secondaryColor,
-      accent: accentColor,
-      background: backgroundColor,
-      card: '#FFFFFF',
-      textMain: '#271E1D',
-    };
-
     await updateWedding({
       ...wedding,
-      brideSideTerm: brideSideTerm.trim(),
-      groomSideTerm: groomSideTerm.trim(),
-      brideSideName: brideSideName.trim(),
-      groomSideName: groomSideName.trim(),
-      customColors,
+      brideSideTerm,
+      groomSideTerm,
+      brideSideName,
+      groomSideName,
+      customColors: {
+        primary: primaryColor,
+        secondary: secondaryColor,
+        accent: accentColor,
+        background: backgroundColor,
+        card: '#FFFFFF',
+        textMain: '#271E1D',
+      },
     });
-
     onClose();
   };
 
+  const handleResetColors = () => {
+    setPrimaryColor('#7B1113');
+    setSecondaryColor('#D97706');
+    setAccentColor('#B45309');
+    setBackgroundColor('#FCFBF7');
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div
-        className="bg-theme-card border border-theme-border w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-theme-border bg-theme-background/70 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-theme-primary-light text-theme-primary flex items-center justify-center">
-              <Settings className="w-5 h-5" />
-            </div>
+    <NestedScreen
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Wedding Theme & Settings"
+      subtitle={`Configure colors and pair terminology for ${wedding.brideName} & ${wedding.groomName}`}
+      mode="drawer"
+      width="2xl"
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted hover:bg-theme-border/20 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+          >
+            <Save className="w-4 h-4" />
+            <span>Save Settings & Colors</span>
+          </button>
+        </>
+      }
+    >
+      <form onSubmit={handleSave} className="space-y-6">
+        {/* Pair Terminology Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-theme-primary font-bold text-sm">
+            <Sparkles className="w-4 h-4" />
+            <span>Pair & Family Group Terminology</span>
+          </div>
+          <p className="text-xs text-theme-text-muted">
+            Customize how both sides are addressed across calendar filters, guest lists, seating charts, and e-invites.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                Wedding Configuration & Custom Theme
-              </h3>
-              <p className="text-xs text-theme-text-muted">
-                Configure pair terminology (Ladkiwale/Ladkewale) and wedding color theme.
-              </p>
+              <label className="block text-xs font-semibold text-theme-text-muted mb-1">
+                Bride's Side Display Term
+              </label>
+              <input
+                type="text"
+                value={brideSideTerm}
+                onChange={(e) => setBrideSideTerm(e.target.value)}
+                placeholder="e.g. Bride's Side, Ladkiwale, Team Ananya"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-card text-theme-text-main focus:outline-none focus:ring-2 focus:ring-theme-primary/30"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-theme-text-muted mb-1">
+                Groom's Side Display Term
+              </label>
+              <input
+                type="text"
+                value={groomSideTerm}
+                onChange={(e) => setGroomSideTerm(e.target.value)}
+                placeholder="e.g. Groom's Side, Ladkewale, Team Aarav"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-card text-theme-text-main focus:outline-none focus:ring-2 focus:ring-theme-primary/30"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-theme-text-muted mb-1">
+                Bride Family Full Label
+              </label>
+              <input
+                type="text"
+                value={brideSideName}
+                onChange={(e) => setBrideSideName(e.target.value)}
+                placeholder="e.g. Ladkiwale (Sharma Family)"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-card text-theme-text-main focus:outline-none focus:ring-2 focus:ring-theme-primary/30"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-theme-text-muted mb-1">
+                Groom Family Full Label
+              </label>
+              <input
+                type="text"
+                value={groomSideName}
+                onChange={(e) => setGroomSideName(e.target.value)}
+                placeholder="e.g. Ladkewale (Verma Family)"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-theme-border bg-theme-card text-theme-text-main focus:outline-none focus:ring-2 focus:ring-theme-primary/30"
+              />
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        <form onSubmit={handleSave} className="p-6 overflow-y-auto space-y-6 flex-1">
-          {/* SECTION 1: Configurable Pair Terminology */}
-          <div className="space-y-4 bg-theme-background/60 p-4 rounded-2xl border border-theme-border">
-            <div className="flex items-center gap-2 border-b border-theme-border/60 pb-2">
-              <Heart className="w-4 h-4 text-theme-primary" />
-              <h4 className="font-serif font-bold text-sm text-theme-text-main">
-                Configurable Pair Terminology
-              </h4>
+        <div className="border-t border-theme-border pt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-theme-primary font-bold text-sm">
+              <Palette className="w-4 h-4" />
+              <span>Wedding Custom Theme & Palette</span>
             </div>
-            <p className="text-xs text-theme-text-muted">
-              Customize how the two sides are labeled throughout lists, tables, seating charts, and filters.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">
-                  Bride's Side Collective Term *
-                </label>
-                <input
-                  type="text"
-                  value={brideSideTerm}
-                  onChange={(e) => setBrideSideTerm(e.target.value)}
-                  placeholder="e.g. Bride's Side, Ladkiwale, Team Bride"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-card text-xs sm:text-sm"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">
-                  Groom's Side Collective Term *
-                </label>
-                <input
-                  type="text"
-                  value={groomSideTerm}
-                  onChange={(e) => setGroomSideTerm(e.target.value)}
-                  placeholder="e.g. Groom's Side, Ladkewale, Team Groom"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-card text-xs sm:text-sm"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-theme-text-muted">
-                  Bride Family Name / Title
-                </label>
-                <input
-                  type="text"
-                  value={brideSideName}
-                  onChange={(e) => setBrideSideName(e.target.value)}
-                  placeholder="e.g. Sharma Pariwaar"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-card text-xs sm:text-sm"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-theme-text-muted">
-                  Groom Family Name / Title
-                </label>
-                <input
-                  type="text"
-                  value={groomSideName}
-                  onChange={(e) => setGroomSideName(e.target.value)}
-                  placeholder="e.g. Verma Pariwaar"
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-card text-xs sm:text-sm"
-                />
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={handleResetColors}
+              className="inline-flex items-center gap-1 text-[11px] text-theme-text-muted hover:text-theme-primary"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Reset</span>
+            </button>
           </div>
+          <p className="text-xs text-theme-text-muted">
+            Define royal colors specific to this wedding that override the default app theme when managing this celebration.
+          </p>
 
-          {/* SECTION 2: Custom Wedding Colors & Theming */}
-          <div className="space-y-4 bg-theme-background/60 p-4 rounded-2xl border border-theme-border">
-            <div className="flex items-center justify-between border-b border-theme-border/60 pb-2">
-              <div className="flex items-center gap-2">
-                <Palette className="w-4 h-4 text-theme-secondary" />
-                <h4 className="font-serif font-bold text-sm text-theme-text-main">
-                  Wedding-Specific Color Theme
-                </h4>
-              </div>
+          {/* Preset Palettes */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-theme-text-muted">
+              Festive Preset Palettes
             </div>
-            <p className="text-xs text-theme-text-muted">
-              Choose an Indian celebratory preset or pick custom hex colors for this specific wedding workspace.
-            </p>
-
-            {/* Presets */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase text-theme-text-muted">
-                Celebration Presets
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {COLOR_PRESETS.map((preset) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {COLOR_PRESETS.map((preset) => {
+                const isSelected =
+                  primaryColor === preset.colors.primary &&
+                  secondaryColor === preset.colors.secondary;
+                return (
                   <button
                     key={preset.name}
                     type="button"
                     onClick={() => handleApplyPreset(preset)}
-                    className="p-2.5 rounded-xl border border-theme-border bg-theme-card hover:border-theme-primary text-left flex items-center justify-between transition-all"
+                    className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? 'border-theme-primary bg-theme-primary/10 shadow-sm'
+                        : 'border-theme-border hover:border-theme-primary/40 bg-theme-card'
+                    }`}
                   >
-                    <span className="text-xs font-semibold text-theme-text-main">{preset.name}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: preset.colors.primary }} />
-                      <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: preset.colors.secondary }} />
-                      <span className="w-3.5 h-3.5 rounded-full border border-black/10" style={{ backgroundColor: preset.colors.background }} />
+                    <div className="truncate pr-2">
+                      <div className="text-xs font-semibold text-theme-text-main truncate">
+                        {preset.name}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-2xs"
+                          style={{ backgroundColor: preset.colors.primary }}
+                        />
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-2xs"
+                          style={{ backgroundColor: preset.colors.secondary }}
+                        />
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-2xs"
+                          style={{ backgroundColor: preset.colors.accent }}
+                        />
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-2xs"
+                          style={{ backgroundColor: preset.colors.background }}
+                        />
+                      </div>
                     </div>
+                    {isSelected && (
+                      <Check className="w-4 h-4 text-theme-primary shrink-0" />
+                    )}
                   </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Color Pickers */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Primary Accent</label>
-                <div className="flex items-center gap-2 p-1.5 rounded-xl border border-theme-border bg-theme-card">
-                  <input
-                    type="color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="w-7 h-7 rounded-lg border-0 cursor-pointer p-0"
-                  />
-                  <input
-                    type="text"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="w-full text-xs font-mono font-bold bg-transparent outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Secondary Gold</label>
-                <div className="flex items-center gap-2 p-1.5 rounded-xl border border-theme-border bg-theme-card">
-                  <input
-                    type="color"
-                    value={secondaryColor}
-                    onChange={(e) => setSecondaryColor(e.target.value)}
-                    className="w-7 h-7 rounded-lg border-0 cursor-pointer p-0"
-                  />
-                  <input
-                    type="text"
-                    value={secondaryColor}
-                    onChange={(e) => setSecondaryColor(e.target.value)}
-                    className="w-full text-xs font-mono font-bold bg-transparent outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Highlight Color</label>
-                <div className="flex items-center gap-2 p-1.5 rounded-xl border border-theme-border bg-theme-card">
-                  <input
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="w-7 h-7 rounded-lg border-0 cursor-pointer p-0"
-                  />
-                  <input
-                    type="text"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="w-full text-xs font-mono font-bold bg-transparent outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Canvas Tint</label>
-                <div className="flex items-center gap-2 p-1.5 rounded-xl border border-theme-border bg-theme-card">
-                  <input
-                    type="color"
-                    value={backgroundColor}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    className="w-7 h-7 rounded-lg border-0 cursor-pointer p-0"
-                  />
-                  <input
-                    type="text"
-                    value={backgroundColor}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    className="w-full text-xs font-mono font-bold bg-transparent outline-hidden"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Live Theme Swatch Preview */}
-            <div
-              className="p-4 rounded-2xl border shadow-inner flex items-center justify-between transition-colors"
-              style={{ backgroundColor: backgroundColor, borderColor: secondaryColor }}
-            >
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: secondaryColor }}>
-                  {brideSideTerm} &bull; {groomSideTerm}
-                </span>
-                <div className="text-base font-serif font-bold" style={{ color: primaryColor }}>
-                  {wedding.brideName} & {wedding.groomName}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs"
-                style={{ backgroundColor: primaryColor }}
-              >
-                Sample Button
-              </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
+          {/* Custom Color Pickers */}
+          <div className="pt-2 space-y-3">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-theme-text-muted">
+              Custom Hex Color Override
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-theme-text-muted mb-1">
+                  Primary Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="w-9 h-9 rounded-lg border border-theme-border cursor-pointer p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-theme-border bg-theme-card uppercase"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-theme-text-muted mb-1">
+                  Secondary (Gold)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={secondaryColor}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    className="w-9 h-9 rounded-lg border border-theme-border cursor-pointer p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={secondaryColor}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-theme-border bg-theme-card uppercase"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-theme-text-muted mb-1">
+                  Accent Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="w-9 h-9 rounded-lg border border-theme-border cursor-pointer p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-theme-border bg-theme-card uppercase"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-theme-text-muted mb-1">
+                  Page Tint
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={backgroundColor}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    className="w-9 h-9 rounded-lg border border-theme-border cursor-pointer p-0.5"
+                  />
+                  <input
+                    type="text"
+                    value={backgroundColor}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-theme-border bg-theme-card uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Theme Swatch Preview */}
+          <div
+            className="p-4 rounded-2xl border shadow-inner flex items-center justify-between transition-colors mt-4"
+            style={{ backgroundColor: backgroundColor, borderColor: secondaryColor }}
+          >
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: secondaryColor }}>
+                {brideSideTerm} &bull; {groomSideTerm}
+              </span>
+              <div className="text-base font-serif font-bold" style={{ color: primaryColor }}>
+                {wedding.brideName} & {wedding.groomName}
+              </div>
+            </div>
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs"
+              style={{ backgroundColor: primaryColor }}
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save Settings & Colors</span>
+              Sample Button
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      </form>
+    </NestedScreen>
   );
 };
