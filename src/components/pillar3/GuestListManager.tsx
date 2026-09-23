@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { Wedding, GuestParty, Guest, EventRsvp } from '../../db/schema';
@@ -7,6 +7,7 @@ import { TagSelector } from '../tags/TagSelector';
 import { FamilyManager } from '../pillar2/FamilyManager';
 import { NestedScreen } from '../common/NestedScreen';
 import { Tooltip } from '../common/Tooltip';
+import { ensureDefaultTags, syncMemberTags } from '../../utils/tagUtils';
 import {
   Users,
   Plus,
@@ -18,6 +19,9 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
   Phone,
   Mail,
   MapPin,
@@ -35,6 +39,8 @@ import {
   MessageCircle,
   UserCheck,
   ShieldCheck,
+  Tag as TagIcon,
+  FileText,
 } from 'lucide-react';
 
 interface GuestListManagerProps {
@@ -106,6 +112,7 @@ interface TabularMemberItem {
   address?: string;
   isCoreFamily?: boolean;
   roleTitle?: string;
+  tagIds?: string[];
 }
 
 export const GuestListManager: React.FC<GuestListManagerProps> = ({
@@ -140,10 +147,16 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSide, setFilterSide] = useState<string>('all');
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+
+  // Pagination for large guest lists (up to 2000+ guests)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
 
   // Drawer Form State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingParty, setEditingParty] = useState<GuestParty | null>(null);
+  const [memberViewMode, setMemberViewMode] = useState<'cards' | 'table'>('cards');
 
   // Form Fields
   const [partyName, setPartyName] = useState('');
@@ -157,14 +170,61 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
   const csvFileRef = useRef<HTMLInputElement>(null);
 
-  // Filtered parties
-  const filteredParties = parties?.filter((p) => {
-    const matchesSearch =
-      p.partyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.primaryContactName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSide = filterSide === 'all' || p.side === filterSide;
-    return matchesSearch && matchesSide;
-  });
+  // Ensure standard system tags (Core Family, Coordinators, Dietary) exist
+  useEffect(() => {
+    ensureDefaultTags();
+  }, []);
+
+  // Reset pagination when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterSide, activeTagFilter]);
+
+  // Filtered parties (searches party name, contact, notes, attendee names/roles/relations, and tag filters)
+  const filteredParties = useMemo(() => {
+    if (!parties) return [];
+    return parties.filter((p) => {
+      const q = searchQuery.toLowerCase().trim();
+      const partyGuests = guests?.filter((g) => g.partyId === p.id) || [];
+      const matchesSearch =
+        !q ||
+        p.partyName.toLowerCase().includes(q) ||
+        p.primaryContactName.toLowerCase().includes(q) ||
+        (p.notes && p.notes.toLowerCase().includes(q)) ||
+        partyGuests.some(
+          (g) =>
+            g.name.toLowerCase().includes(q) ||
+            (g.phone && g.phone.includes(q)) ||
+            (g.email && g.email.toLowerCase().includes(q)) ||
+            (g.roleTitle && g.roleTitle.toLowerCase().includes(q)) ||
+            (g.relationToBride && g.relationToBride.toLowerCase().includes(q)) ||
+            (g.relationToGroom && g.relationToGroom.toLowerCase().includes(q))
+        );
+
+      const matchesSide = filterSide === 'all' || p.side === filterSide;
+
+      const matchesTag =
+        !activeTagFilter ||
+        p.tagIds?.includes(activeTagFilter) ||
+        partyGuests.some((g) => g.tagIds?.includes(activeTagFilter));
+
+      return matchesSearch && matchesSide && matchesTag;
+    });
+  }, [parties, guests, searchQuery, filterSide, activeTagFilter]);
+
+  // Paginated parties slice for smooth DOM performance with 2000+ guests
+  const totalFilteredParties = filteredParties.length;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredParties / (pageSize >= 99999 ? totalFilteredParties || 1 : pageSize)));
+  const paginatedParties = useMemo(() => {
+    if (pageSize >= 99999) return filteredParties;
+    const start = (currentPage - 1) * pageSize;
+    return filteredParties.slice(start, start + pageSize);
+  }, [filteredParties, currentPage, pageSize]);
+
+  const filteredAttendeesCount = useMemo(() => {
+    const partyIds = new Set(filteredParties.map((p) => p.id));
+    return guests?.filter((g) => partyIds.has(g.partyId)).length || 0;
+  }, [filteredParties, guests]);
 
   // Calculate Metrics across guests
   const totalGuests = guests?.length || parties?.reduce((sum, p) => sum + p.adultsCount + p.childrenCount, 0) || 0;
@@ -298,7 +358,14 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
   const toggleCoreStatus = async (guest: Guest, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    await db.guests.update(guest.id, { isCoreFamily: !guest.isCoreFamily });
+    const nextCore = !guest.isCoreFamily;
+    const newTags = syncMemberTags(
+      guest.tagIds || [],
+      nextCore,
+      guest.roleTitle,
+      guest.dietaryPreference || 'pure_veg'
+    );
+    await db.guests.update(guest.id, { isCoreFamily: nextCore, tagIds: newTags });
   };
 
   const handleOpenAssignRole = (guest: Guest, e?: React.MouseEvent) => {
@@ -312,9 +379,17 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
   const handleSaveRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRoleGuest) return;
+    const newRole = roleInput.trim() || undefined;
+    const newTags = syncMemberTags(
+      editingRoleGuest.tagIds || [],
+      isRoleCoreToggle,
+      newRole,
+      editingRoleGuest.dietaryPreference || 'pure_veg'
+    );
     await db.guests.update(editingRoleGuest.id, {
-      roleTitle: roleInput.trim() || undefined,
+      roleTitle: newRole,
       isCoreFamily: isRoleCoreToggle,
+      tagIds: newTags,
     });
     setIsRoleDrawerOpen(false);
     setEditingRoleGuest(null);
@@ -323,9 +398,18 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
   const handleAddGuestToCore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGuestIdToAdd) return;
+    const targetGuest = guests?.find((g) => g.id === selectedGuestIdToAdd);
+    const newRole = newCoreRoleInput.trim() || undefined;
+    const newTags = syncMemberTags(
+      targetGuest?.tagIds || [],
+      true,
+      newRole,
+      targetGuest?.dietaryPreference || 'pure_veg'
+    );
     await db.guests.update(selectedGuestIdToAdd, {
       isCoreFamily: true,
-      roleTitle: newCoreRoleInput.trim() || undefined,
+      roleTitle: newRole,
+      tagIds: newTags,
     });
     setSelectedGuestIdToAdd('');
     setNewCoreRoleInput('');
@@ -371,6 +455,8 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
         email: '',
         address: '',
         isCoreFamily: false,
+        roleTitle: '',
+        tagIds: [],
       },
     ]);
     setIsDrawerOpen(true);
@@ -404,6 +490,7 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
           address: g.address || '',
           isCoreFamily: !!g.isCoreFamily,
           roleTitle: g.roleTitle || '',
+          tagIds: g.tagIds || [],
         }))
       );
     } else {
@@ -421,6 +508,8 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
           email: party.email || '',
           address: '',
           isCoreFamily: false,
+          roleTitle: '',
+          tagIds: [],
         },
       ]);
     }
@@ -461,6 +550,59 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
         setPrimaryContactName(String(value).trim());
       }
 
+      // Automatically synchronize tagIds with Core Family, Role, and Dietary preference
+      if (field === 'isCoreFamily') {
+        updated[index].tagIds = syncMemberTags(
+          updated[index].tagIds || [],
+          Boolean(value),
+          updated[index].roleTitle,
+          updated[index].dietaryPreference
+        );
+      } else if (field === 'roleTitle') {
+        updated[index].tagIds = syncMemberTags(
+          updated[index].tagIds || [],
+          !!updated[index].isCoreFamily,
+          String(value),
+          updated[index].dietaryPreference
+        );
+      } else if (field === 'dietaryPreference') {
+        updated[index].tagIds = syncMemberTags(
+          updated[index].tagIds || [],
+          !!updated[index].isCoreFamily,
+          updated[index].roleTitle,
+          value as any
+        );
+      }
+
+      return updated;
+    });
+  };
+
+  const handleToggleMemberTag = (index: number, tagId: string) => {
+    setTabularMembers((prev) => {
+      const updated = [...prev];
+      const member = updated[index];
+      const currentTags = member.tagIds || [];
+      let nextTags: string[];
+      let isCore = member.isCoreFamily;
+      let role = member.roleTitle;
+
+      if (currentTags.includes(tagId)) {
+        nextTags = currentTags.filter((t) => t !== tagId);
+        if (tagId === 'tag-core-family') isCore = false;
+        if (tagId === 'tag-coordinator') role = '';
+      } else {
+        nextTags = [...currentTags, tagId];
+        if (tagId === 'tag-core-family') isCore = true;
+        if (tagId === 'tag-coordinator' && !role) role = 'Coordinator';
+      }
+
+      updated[index] = {
+        ...member,
+        tagIds: nextTags,
+        isCoreFamily: isCore,
+        roleTitle: role,
+      };
       return updated;
     });
   };
@@ -481,6 +623,8 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
         email: '',
         address: '',
         isCoreFamily: false,
+        roleTitle: '',
+        tagIds: [],
       },
     ]);
   };
@@ -542,27 +686,37 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
               relationToBride: 'None',
               relationToGroom: 'None',
               dietaryPreference: 'pure_veg' as const,
+              tagIds: [],
             },
           ]
-      ).map((m, idx) => ({
-        id: m.id || `gst-${partyId}-${idx}-${Date.now()}`,
-        partyId,
-        weddingId: wedding.id,
-        name: m.name.trim(),
-        isPrimaryContact: !!m.isPrimaryContact,
-        ageCategory: m.ageCategory,
-        generationLevel: Number(m.generationLevel) || 3,
-        relationToBride: m.relationToBride !== 'None' ? m.relationToBride : undefined,
-        relationToGroom: m.relationToGroom !== 'None' ? m.relationToGroom : undefined,
-        dietaryPreference: m.dietaryPreference,
-        specialAssistance: m.specialAssistance?.trim() || undefined,
-        phone: m.phone?.trim() || undefined,
-        email: m.email?.trim() || undefined,
-        address: m.address?.trim() || undefined,
-        isCoreFamily: !!m.isCoreFamily,
-        roleTitle: m.roleTitle?.trim() || undefined,
-        tagIds: selectedTagIds,
-      }));
+      ).map((m, idx) => {
+        const syncedTags = syncMemberTags(
+          m.tagIds && m.tagIds.length > 0 ? m.tagIds : selectedTagIds,
+          !!m.isCoreFamily,
+          m.roleTitle,
+          m.dietaryPreference
+        );
+
+        return {
+          id: m.id || `gst-${partyId}-${idx}-${Date.now()}`,
+          partyId,
+          weddingId: wedding.id,
+          name: m.name.trim(),
+          isPrimaryContact: !!m.isPrimaryContact,
+          ageCategory: m.ageCategory,
+          generationLevel: Number(m.generationLevel) || 3,
+          relationToBride: m.relationToBride !== 'None' ? m.relationToBride : undefined,
+          relationToGroom: m.relationToGroom !== 'None' ? m.relationToGroom : undefined,
+          dietaryPreference: m.dietaryPreference,
+          specialAssistance: m.specialAssistance?.trim() || undefined,
+          phone: m.phone?.trim() || undefined,
+          email: m.email?.trim() || undefined,
+          address: m.address?.trim() || undefined,
+          isCoreFamily: !!m.isCoreFamily,
+          roleTitle: m.roleTitle?.trim() || undefined,
+          tagIds: syncedTags,
+        };
+      });
 
       await db.guests.bulkPut(guestRecords);
 
@@ -1013,7 +1167,11 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-serif font-bold text-sm text-theme-text-main truncate">
+                              <span
+                                onClick={() => { if (party) openEditParty(party); }}
+                                className="font-serif font-bold text-sm text-theme-text-main truncate cursor-pointer hover:text-theme-primary hover:underline"
+                                title="Click to open Family Drawer"
+                              >
                                 {g.name}
                               </span>
                               {g.isPrimaryContact && (
@@ -1026,24 +1184,43 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                             <div className="flex items-center gap-2 text-xs text-theme-text-muted mt-0.5 flex-wrap">
                               <span className="font-medium text-amber-800 dark:text-amber-300">{relation}</span>
                               <span>&bull;</span>
-                              <span className="truncate">{party?.partyName || 'Family'}</span>
+                              <span
+                                onClick={() => { if (party) openEditParty(party); }}
+                                className="truncate cursor-pointer hover:underline text-theme-primary"
+                                title="Click to open Family Drawer"
+                              >
+                                {party?.partyName || 'Family'}
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* 1-Click Core Family Star/Crown Toggle */}
-                        <button
-                          type="button"
-                          onClick={(e) => toggleCoreStatus(g, e)}
-                          className={`p-2 rounded-xl transition-all ${
-                            g.isCoreFamily
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
-                              : 'bg-theme-background text-theme-text-muted hover:text-amber-500 border border-theme-border'
-                          }`}
-                          title={g.isCoreFamily ? 'Core Family Member (Click to unflag)' : 'Click to flag as Core Family'}
-                        >
-                          <Crown className={`w-4 h-4 ${g.isCoreFamily ? 'fill-current' : ''}`} />
-                        </button>
+                        {/* Actions: Family Drawer Navigation & 1-Click Core Family Star/Crown Toggle */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {party && (
+                            <button
+                              type="button"
+                              onClick={() => openEditParty(party)}
+                              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-theme-background hover:bg-theme-border/50 text-theme-text-muted hover:text-theme-primary border border-theme-border transition-all flex items-center gap-1 text-[11px] font-semibold"
+                              title={`Open ${party.partyName} Family Drawer`}
+                            >
+                              <Edit2 className="w-3 h-3 text-theme-primary" />
+                              <span className="hidden sm:inline">Family Drawer</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => toggleCoreStatus(g, e)}
+                            className={`p-2 rounded-xl transition-all ${
+                              g.isCoreFamily
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
+                                : 'bg-theme-background text-theme-text-muted hover:text-amber-500 border border-theme-border'
+                            }`}
+                            title={g.isCoreFamily ? 'Core Family Member (Click to unflag)' : 'Click to flag as Core Family'}
+                          >
+                            <Crown className={`w-4 h-4 ${g.isCoreFamily ? 'fill-current' : ''}`} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Operational Role Section */}
@@ -1214,7 +1391,11 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-serif font-bold text-sm text-theme-text-main truncate">
+                              <span
+                                onClick={() => { if (party) openEditParty(party); }}
+                                className="font-serif font-bold text-sm text-theme-text-main truncate cursor-pointer hover:text-theme-primary hover:underline"
+                                title="Click to open Family Drawer"
+                              >
                                 {g.name}
                               </span>
                               {g.isPrimaryContact && (
@@ -1227,24 +1408,43 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                             <div className="flex items-center gap-2 text-xs text-theme-text-muted mt-0.5 flex-wrap">
                               <span className="font-medium text-rose-800 dark:text-rose-300">{relation}</span>
                               <span>&bull;</span>
-                              <span className="truncate">{party?.partyName || 'Family'}</span>
+                              <span
+                                onClick={() => { if (party) openEditParty(party); }}
+                                className="truncate cursor-pointer hover:underline text-theme-primary"
+                                title="Click to open Family Drawer"
+                              >
+                                {party?.partyName || 'Family'}
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* 1-Click Core Family Star/Crown Toggle */}
-                        <button
-                          type="button"
-                          onClick={(e) => toggleCoreStatus(g, e)}
-                          className={`p-2 rounded-xl transition-all ${
-                            g.isCoreFamily
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
-                              : 'bg-theme-background text-theme-text-muted hover:text-amber-500 border border-theme-border'
-                          }`}
-                          title={g.isCoreFamily ? 'Core Family Member (Click to unflag)' : 'Click to flag as Core Family'}
-                        >
-                          <Crown className={`w-4 h-4 ${g.isCoreFamily ? 'fill-current' : ''}`} />
-                        </button>
+                        {/* Actions: Family Drawer Navigation & 1-Click Core Family Star/Crown Toggle */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {party && (
+                            <button
+                              type="button"
+                              onClick={() => openEditParty(party)}
+                              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-theme-background hover:bg-theme-border/50 text-theme-text-muted hover:text-theme-primary border border-theme-border transition-all flex items-center gap-1 text-[11px] font-semibold"
+                              title={`Open ${party.partyName} Family Drawer`}
+                            >
+                              <Edit2 className="w-3 h-3 text-theme-primary" />
+                              <span className="hidden sm:inline">Family Drawer</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => toggleCoreStatus(g, e)}
+                            className={`p-2 rounded-xl transition-all ${
+                              g.isCoreFamily
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
+                                : 'bg-theme-background text-theme-text-muted hover:text-amber-500 border border-theme-border'
+                            }`}
+                            title={g.isCoreFamily ? 'Core Family Member (Click to unflag)' : 'Click to flag as Core Family'}
+                          >
+                            <Crown className={`w-4 h-4 ${g.isCoreFamily ? 'fill-current' : ''}`} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Operational Role Section */}
@@ -1387,22 +1587,43 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                       className="p-4 rounded-2xl border border-theme-border hover:border-theme-primary transition-all hover:shadow-md bg-theme-card"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="font-bold text-sm text-theme-text-main truncate">
+                        <div
+                          onClick={() => { if (party) openEditParty(party); }}
+                          className="font-bold text-sm text-theme-text-main truncate cursor-pointer hover:text-theme-primary hover:underline"
+                          title="Open Family Drawer"
+                        >
                           {g.name}
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => toggleCoreStatus(g, e)}
-                          className={`p-1.5 rounded-lg ${
-                            g.isCoreFamily
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                              : 'text-stone-300 hover:text-amber-500'
-                          }`}
-                        >
-                          <Crown className={`w-3.5 h-3.5 ${g.isCoreFamily ? 'fill-current' : ''}`} />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {party && (
+                            <button
+                              type="button"
+                              onClick={() => openEditParty(party)}
+                              className="p-1.5 rounded-lg bg-theme-background hover:bg-theme-border text-theme-text-muted hover:text-theme-primary border border-theme-border transition-all"
+                              title={`Open ${party.partyName} Family Drawer`}
+                            >
+                              <Edit2 className="w-3 h-3 text-theme-primary" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => toggleCoreStatus(g, e)}
+                            className={`p-1.5 rounded-lg ${
+                              g.isCoreFamily
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : 'text-stone-300 hover:text-amber-500'
+                            }`}
+                            title={g.isCoreFamily ? 'Core Family Member (Click to unflag)' : 'Click to flag as Core Family'}
+                          >
+                            <Crown className={`w-3.5 h-3.5 ${g.isCoreFamily ? 'fill-current' : ''}`} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-xs text-theme-text-muted mt-1 truncate">
+                      <div
+                        onClick={() => { if (party) openEditParty(party); }}
+                        className="text-xs text-theme-text-muted mt-1 truncate cursor-pointer hover:underline hover:text-theme-primary"
+                        title="Open Family Drawer"
+                      >
                         {party?.partyName || 'Family'}
                       </div>
                       {g.roleTitle && (
@@ -1554,6 +1775,42 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
             </div>
           </div>
 
+          {/* Quick Tag Filter Bar (Requirement 2 & 5) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs px-1">
+            <span className="text-[11px] font-bold text-theme-text-muted shrink-0 mr-1 flex items-center gap-1">
+              <TagIcon className="w-3 h-3 text-theme-secondary" />
+              <span>Filter by Tag:</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveTagFilter(null)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 ${
+                activeTagFilter === null
+                  ? 'bg-theme-primary text-white shadow-xs'
+                  : 'bg-theme-card border border-theme-border text-theme-text-muted hover:text-theme-text-main hover:bg-stone-50 dark:hover:bg-stone-800'
+              }`}
+            >
+              All Guests ({parties?.length || 0})
+            </button>
+            {allTags?.map((t) => {
+              const isSelected = activeTagFilter === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTagFilter(isSelected ? null : t.id)}
+                  className={`transition-all rounded-full shrink-0 ${
+                    isSelected
+                      ? 'ring-2 ring-theme-primary ring-offset-1 scale-105'
+                      : 'opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <TagBadge tag={t} size="sm" />
+                </button>
+              );
+            })}
+          </div>
+
           {/* Granular Individual Table Rows for Multi-Event RSVP */}
           <div className="bg-theme-card border border-theme-border rounded-3xl overflow-hidden shadow-2xs">
             <div className="overflow-x-auto">
@@ -1568,12 +1825,20 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
 
                     {/* Ceremony Headers equipped with Tooltip (Requirement 16) */}
                     {events?.map((ev) => (
-                      <th key={ev.id} className="py-3 px-2 text-center min-w-[85px] max-w-[120px]">
+                      <th key={ev.id} className="py-3 px-2 text-center min-w-[90px] max-w-[130px]">
                         <Tooltip
+                          position="bottom"
                           content={
                             <div className="space-y-1 text-left p-1">
-                              <div className="font-bold text-amber-300 text-xs">
-                                {ev.name} ({ev.type})
+                              <div className="font-bold text-amber-300 text-xs flex items-center justify-between gap-2">
+                                <span>{ev.name} ({ev.type})</span>
+                                {ev.sideScope === 'bride_only' ? (
+                                  <span className="text-[9px] bg-rose-900/80 text-rose-200 px-1.5 py-0.2 rounded font-semibold">Bride Only</span>
+                                ) : ev.sideScope === 'groom_only' ? (
+                                  <span className="text-[9px] bg-amber-900/80 text-amber-200 px-1.5 py-0.2 rounded font-semibold">Groom Only</span>
+                                ) : (
+                                  <span className="text-[9px] bg-purple-900/80 text-purple-200 px-1.5 py-0.2 rounded font-semibold">Both Sides</span>
+                                )}
                               </div>
                               <div className="text-[11px] text-stone-200">
                                 📅 {ev.date} &bull; ⏰ {ev.startTime} - {ev.endTime}
@@ -1588,11 +1853,13 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                           }
                         >
                           <div className="cursor-help mx-auto">
-                            <div className="truncate text-theme-text-main font-bold max-w-[85px]">
+                            <div className="truncate text-theme-text-main font-bold max-w-[90px]">
                               {ev.name}
                             </div>
-                            <div className="text-[9px] font-normal text-theme-text-muted capitalize">
-                              {ev.type}
+                            <div className="text-[9px] font-normal text-theme-text-muted capitalize flex items-center justify-center gap-1">
+                              <span>{ev.type}</span>
+                              {ev.sideScope === 'bride_only' && <span className="text-rose-500 font-bold" title="Bride's Side Only">🌸</span>}
+                              {ev.sideScope === 'groom_only' && <span className="text-amber-500 font-bold" title="Groom's Side Only">👑</span>}
                             </div>
                           </div>
                         </Tooltip>
@@ -1603,7 +1870,7 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-theme-border text-xs">
-                  {filteredParties?.map((party) => {
+                  {paginatedParties.map((party) => {
                     const partyExpanded = isPartyExpanded(party.id);
                     const partyGuests = guests?.filter((g) => g.partyId === party.id) || [];
                     const partyTags = allTags?.filter((t) => party.tagIds?.includes(t.id)) || [];
@@ -1636,6 +1903,13 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                                 {partyGuests.length} members
                               </span>
                             </div>
+                            {/* Family Notes in Table View (Requirement 3) */}
+                            {party.notes && (
+                              <div className="text-[11px] text-amber-900/90 dark:text-amber-300/90 bg-amber-50/70 dark:bg-amber-950/30 px-2 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-900/40 mt-1 flex items-start gap-1 font-normal">
+                                <FileText className="w-3 h-3 mt-0.5 shrink-0 text-amber-600" />
+                                <span>{party.notes}</span>
+                              </div>
+                            )}
                             {partyTags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {partyTags.map((t) => (
@@ -1801,6 +2075,13 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                                         <span className="truncate max-w-[140px]">{guest.address}</span>
                                       </div>
                                     )}
+                                    {guest.tagIds && guest.tagIds.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {allTags?.filter((t) => guest.tagIds?.includes(t.id)).map((t) => (
+                                          <TagBadge key={t.id} tag={t} size="sm" />
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 </td>
 
@@ -1852,8 +2133,16 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                                   );
                                 })}
 
-                                <td className="py-2 px-3 text-right text-stone-400 text-[10px]">
-                                  Individual
+                                <td className="py-2 px-3 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditParty(party)}
+                                    className="p-1 rounded text-theme-text-muted hover:text-theme-primary transition-colors text-[10px] inline-flex items-center gap-1 font-medium"
+                                    title={`Edit ${guest.name} in ${party.partyName} Drawer`}
+                                  >
+                                    <Edit2 className="w-3 h-3 text-theme-primary" />
+                                    <span>Edit</span>
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -1878,6 +2167,90 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Pagination Controls (Requirement 8) */}
+            <div className="p-3.5 bg-theme-background/70 border-t border-theme-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="text-theme-text-muted text-center sm:text-left">
+                Showing{' '}
+                <strong className="text-theme-text-main">
+                  {totalFilteredParties === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+                </strong>
+                –
+                <strong className="text-theme-text-main">
+                  {Math.min(currentPage * pageSize, totalFilteredParties)}
+                </strong>{' '}
+                of <strong className="text-theme-text-main">{totalFilteredParties}</strong> parties{' '}
+                <span className="text-[11px] text-theme-text-muted">
+                  ({filteredAttendeesCount} total attendees)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap justify-center">
+                {/* Page Size Selector */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-theme-text-muted text-[11px]">Rows:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-2 py-1 rounded-lg border border-theme-border bg-theme-background text-theme-text-main text-xs font-semibold cursor-pointer"
+                  >
+                    <option value={25}>25 / page</option>
+                    <option value={50}>50 / page</option>
+                    <option value={100}>100 / page</option>
+                    <option value={200}>200 / page</option>
+                    <option value={99999}>All ({totalFilteredParties})</option>
+                  </select>
+                </div>
+
+                {/* Page Navigation Buttons */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="p-1.5 rounded-lg border border-theme-border bg-theme-card text-theme-text-muted hover:text-theme-text-main disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="First page"
+                  >
+                    <ChevronsLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 rounded-lg border border-theme-border bg-theme-card text-theme-text-muted hover:text-theme-text-main disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Previous page"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  <span className="px-2.5 py-1 rounded-lg font-bold text-theme-text-main bg-theme-background border border-theme-border text-xs min-w-[75px] text-center">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="p-1.5 rounded-lg border border-theme-border bg-theme-card text-theme-text-muted hover:text-theme-text-main disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Next page"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage >= totalPages}
+                    className="p-1.5 rounded-lg border border-theme-border bg-theme-card text-theme-text-muted hover:text-theme-text-main disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Last page"
+                  >
+                    <ChevronsRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1987,223 +2360,536 @@ export const GuestListManager: React.FC<GuestListManagerProps> = ({
             onOpenManager={onOpenTagManager}
           />
 
-          {/* TABULAR INDIVIDUAL MEMBERS LIST (Requirement 6: Each member with phone, email, address, isCoreFamily) */}
+          {/* INDIVIDUAL MEMBERS LIST (Requirement 1, 4 & 5: Detailed Cards + Table View with all info) */}
           <div className="border border-theme-border rounded-2xl overflow-hidden bg-theme-card">
-            <div className="p-3 bg-theme-background/80 border-b border-theme-border flex items-center justify-between">
+            <div className="p-3 bg-theme-background/80 border-b border-theme-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <div className="font-bold text-xs text-theme-text-main flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-theme-primary" />
-                  <span>Tabular Individual Party Members ({tabularMembers.length})</span>
+                  <span>Individual Party Attendees ({tabularMembers.length})</span>
                 </div>
                 <p className="text-[11px] text-theme-text-muted">
-                  Each member can have distinct contact details, address, age tier, and core family status.
+                  Manage individual contact details, relation guides, operational roles, dietary preferences, and member tags.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleAddMemberRow}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Member Row</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {/* View Mode Toggle: Cards vs Table */}
+                <div className="flex items-center bg-theme-card border border-theme-border rounded-xl p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setMemberViewMode('cards')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] ${
+                      memberViewMode === 'cards'
+                        ? 'bg-theme-primary text-white shadow-xs'
+                        : 'text-theme-text-muted hover:text-theme-text-main'
+                    }`}
+                  >
+                    Card View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMemberViewMode('table')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all text-[11px] ${
+                      memberViewMode === 'table'
+                        ? 'bg-theme-primary text-white shadow-xs'
+                        : 'text-theme-text-muted hover:text-theme-text-main'
+                    }`}
+                  >
+                    Table View
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddMemberRow}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Member</span>
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-x-auto max-h-[420px]">
-              <table className="w-full text-left border-collapse min-w-[1050px]">
-                <thead>
-                  <tr className="border-b border-theme-border bg-theme-background/60 text-[10px] font-bold uppercase tracking-wider text-theme-text-muted">
-                    <th className="py-2.5 px-3 text-center w-12" title="Primary Contact">
-                      Primary
-                    </th>
-                    <th className="py-2.5 px-3 min-w-[140px]">Member Name *</th>
-                    <th className="py-2.5 px-3 min-w-[110px]">Age Tier</th>
-                    <th className="py-2.5 px-3 text-center min-w-[80px]" title="Mark as Core Family Member">
-                      Core Fam?
-                    </th>
-                    <th className="py-2.5 px-3 min-w-[130px]">Personal Phone</th>
-                    <th className="py-2.5 px-3 min-w-[140px]">Personal Email</th>
-                    <th className="py-2.5 px-3 min-w-[140px]">Address</th>
-                    <th className="py-2.5 px-3 min-w-[130px]">Relation to Bride</th>
-                    <th className="py-2.5 px-3 min-w-[130px]">Relation to Groom</th>
-                    <th className="py-2.5 px-3 min-w-[110px]">Dietary</th>
-                    <th className="py-2.5 px-3 text-center w-10"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-theme-border/60 text-xs">
-                  {tabularMembers.map((member, index) => (
-                    <tr
+            {/* View 1: Detailed Cards View (No Horizontal Scroll Clipping) */}
+            {memberViewMode === 'cards' ? (
+              <div className="p-4 space-y-4 max-h-[480px] overflow-y-auto">
+                {tabularMembers.map((member, index) => {
+                  const memberTags = allTags?.filter((t) => member.tagIds?.includes(t.id)) || [];
+
+                  return (
+                    <div
                       key={index}
-                      className={`hover:bg-theme-background/40 transition-colors ${
-                        member.isPrimaryContact ? 'bg-amber-500/5' : ''
+                      className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                        member.isPrimaryContact
+                          ? 'border-amber-300 dark:border-amber-900/60 bg-amber-500/5'
+                          : 'border-theme-border bg-theme-background/60 hover:border-theme-primary/40'
                       }`}
                     >
-                      {/* Primary Radio */}
-                      <td className="py-2.5 px-3 text-center">
-                        <input
-                          type="radio"
-                          name="primaryContactSelection"
-                          checked={member.isPrimaryContact}
-                          onChange={() => handleSelectPrimaryContact(index)}
-                          className="w-4 h-4 text-theme-primary focus:ring-theme-primary cursor-pointer"
-                          title="Mark as primary contact"
-                        />
-                      </td>
+                      {/* Card Header: Member Title, Primary toggle, Core Family toggle, Delete */}
+                      <div className="flex items-center justify-between gap-2 border-b border-theme-border/60 pb-2.5 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-xl bg-stone-200 dark:bg-stone-800 flex items-center justify-center text-sm font-bold shadow-2xs">
+                            {member.ageCategory === 'elder'
+                              ? '👴'
+                              : member.ageCategory === 'child'
+                              ? '🧒'
+                              : member.ageCategory === 'infant'
+                              ? '👶'
+                              : '👤'}
+                          </span>
+                          <span className="font-serif font-bold text-sm text-theme-text-main">
+                            {member.name.trim() || `Member #${index + 1}`}
+                          </span>
+                          {member.isPrimaryContact && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                              <span>Primary Contact</span>
+                            </span>
+                          )}
+                        </div>
 
-                      {/* Name */}
-                      <td className="py-2 px-3">
-                        <input
-                          type="text"
-                          value={member.name}
-                          onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
-                          placeholder={`Member #${index + 1}`}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-theme-primary"
-                          required
-                        />
-                      </td>
+                        <div className="flex items-center gap-2">
+                          {/* Set Primary Radio */}
+                          <label className="flex items-center gap-1 text-[11px] font-medium text-theme-text-muted cursor-pointer hover:text-theme-text-main">
+                            <input
+                              type="radio"
+                              name="primaryContactSelection"
+                              checked={member.isPrimaryContact}
+                              onChange={() => handleSelectPrimaryContact(index)}
+                              className="w-3.5 h-3.5 text-theme-primary focus:ring-theme-primary cursor-pointer"
+                            />
+                            <span>Make Primary</span>
+                          </label>
 
-                      {/* Age Tier */}
-                      <td className="py-2 px-3">
-                        <select
-                          value={member.ageCategory}
-                          onChange={(e) =>
-                            handleMemberChange(index, 'ageCategory', e.target.value as any)
-                          }
-                          className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs font-medium cursor-pointer"
-                        >
-                          <option value="adult">👤 Adult (18+)</option>
-                          <option value="elder">👴 Elder / Senior</option>
-                          <option value="child">🧒 Child (2-12)</option>
-                          <option value="infant">👶 Infant (&lt;2)</option>
-                        </select>
-                      </td>
+                          {/* Core Family Crown Toggle */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleMemberChange(index, 'isCoreFamily', !member.isCoreFamily)
+                            }
+                            className={`px-2 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                              member.isCoreFamily
+                                ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 shadow-2xs'
+                                : 'bg-theme-background text-theme-text-muted border-theme-border hover:text-amber-600'
+                            }`}
+                            title="Toggle Core Family status (syncs with Core Family tag)"
+                          >
+                            <Crown className={`w-3.5 h-3.5 ${member.isCoreFamily ? 'fill-current text-amber-600' : ''}`} />
+                            <span className="text-[11px]">Core Family</span>
+                          </button>
 
-                      {/* Core Family Checkbox */}
-                      <td className="py-2 px-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={!!member.isCoreFamily}
-                          onChange={(e) =>
-                            handleMemberChange(index, 'isCoreFamily', e.target.checked)
-                          }
-                          className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 cursor-pointer"
-                          title="Check if this member is core family"
-                        />
-                      </td>
+                          {/* Delete row */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMemberRow(index)}
+                            disabled={tabularMembers.length <= 1}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 disabled:opacity-30 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                            title="Remove member"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
 
-                      {/* Personal Phone */}
-                      <td className="py-2 px-3">
-                        <input
-                          type="tel"
-                          value={member.phone || ''}
-                          onChange={(e) => handleMemberChange(index, 'phone', e.target.value)}
-                          placeholder="+91..."
-                          className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
-                        />
-                      </td>
+                      {/* Row 1: Name, Nature/Age, Relation Guides */}
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                        <div className="space-y-1 sm:col-span-1">
+                          <label className="font-bold text-theme-text-main">Full Name *</label>
+                          <input
+                            type="text"
+                            value={member.name}
+                            onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
+                            placeholder="Attendee Name"
+                            className="w-full px-3 py-1.5 rounded-xl border border-theme-border bg-theme-background font-semibold focus:outline-none focus:ring-2 focus:ring-theme-primary/30"
+                            required
+                          />
+                        </div>
 
-                      {/* Personal Email */}
-                      <td className="py-2 px-3">
-                        <input
-                          type="email"
-                          value={member.email || ''}
-                          onChange={(e) => handleMemberChange(index, 'email', e.target.value)}
-                          placeholder="email@..."
-                          className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
-                        />
-                      </td>
+                        <div className="space-y-1">
+                          <label className="font-bold text-theme-text-main">Guest Nature / Age</label>
+                          <select
+                            value={member.ageCategory}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'ageCategory', e.target.value as any)
+                            }
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-theme-border bg-theme-background font-medium cursor-pointer"
+                          >
+                            <option value="adult">👤 Adult (18+)</option>
+                            <option value="elder">👴 Elder / Senior</option>
+                            <option value="child">🧒 Child (2-12)</option>
+                            <option value="infant">👶 Infant (&lt;2)</option>
+                          </select>
+                        </div>
 
-                      {/* Address */}
-                      <td className="py-2 px-3">
-                        <input
-                          type="text"
-                          value={member.address || ''}
-                          onChange={(e) => handleMemberChange(index, 'address', e.target.value)}
-                          placeholder="City / Street"
-                          className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
-                        />
-                      </td>
+                        <div className="space-y-1">
+                          <label className="font-bold text-rose-900 dark:text-rose-300">
+                            Relation to Bride
+                          </label>
+                          <select
+                            value={member.relationToBride}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'relationToBride', e.target.value)
+                            }
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-theme-background text-rose-900 dark:text-rose-200 font-semibold cursor-pointer"
+                          >
+                            {RELATION_GUIDE_OPTIONS.map((rel) => (
+                              <option key={rel} value={rel}>
+                                {rel}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-                      {/* Relation to Bride */}
-                      <td className="py-2 px-3">
-                        <select
-                          value={member.relationToBride}
-                          onChange={(e) =>
-                            handleMemberChange(index, 'relationToBride', e.target.value)
-                          }
-                          className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer text-rose-900"
-                        >
-                          {RELATION_GUIDE_OPTIONS.map((rel) => (
-                            <option key={rel} value={rel}>
-                              {rel}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                        <div className="space-y-1">
+                          <label className="font-bold text-amber-900 dark:text-amber-300">
+                            Relation to Groom
+                          </label>
+                          <select
+                            value={member.relationToGroom}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'relationToGroom', e.target.value)
+                            }
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-theme-background text-amber-900 dark:text-amber-200 font-semibold cursor-pointer"
+                          >
+                            {RELATION_GUIDE_OPTIONS.map((rel) => (
+                              <option key={rel} value={rel}>
+                                {rel}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
 
-                      {/* Relation to Groom */}
-                      <td className="py-2 px-3">
-                        <select
-                          value={member.relationToGroom}
-                          onChange={(e) =>
-                            handleMemberChange(index, 'relationToGroom', e.target.value)
-                          }
-                          className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer text-amber-900"
-                        >
-                          {RELATION_GUIDE_OPTIONS.map((rel) => (
-                            <option key={rel} value={rel}>
-                              {rel}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                      {/* Row 2: Personal Contact Details (Phone, Email, Address) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div className="space-y-1">
+                          <label className="font-bold text-theme-text-muted flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-emerald-600" />
+                            <span>Personal Phone</span>
+                          </label>
+                          <input
+                            type="tel"
+                            value={member.phone || ''}
+                            onChange={(e) => handleMemberChange(index, 'phone', e.target.value)}
+                            placeholder="+91 98765 43210"
+                            className="w-full px-3 py-1.5 rounded-xl border border-theme-border bg-theme-background text-xs"
+                          />
+                        </div>
 
-                      {/* Dietary */}
-                      <td className="py-2 px-3">
-                        <select
-                          value={member.dietaryPreference}
-                          onChange={(e) =>
-                            handleMemberChange(index, 'dietaryPreference', e.target.value as any)
-                          }
-                          className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer"
-                        >
-                          <option value="pure_veg">Pure Veg</option>
-                          <option value="jain">Jain</option>
-                          <option value="non_veg">Non-Veg</option>
-                          <option value="vegan">Vegan</option>
-                        </select>
-                      </td>
+                        <div className="space-y-1">
+                          <label className="font-bold text-theme-text-muted flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-blue-500" />
+                            <span>Personal Email</span>
+                          </label>
+                          <input
+                            type="email"
+                            value={member.email || ''}
+                            onChange={(e) => handleMemberChange(index, 'email', e.target.value)}
+                            placeholder="attendee@example.com"
+                            className="w-full px-3 py-1.5 rounded-xl border border-theme-border bg-theme-background text-xs"
+                          />
+                        </div>
 
-                      {/* Delete Member Row */}
-                      <td className="py-2 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMemberRow(index)}
-                          disabled={tabularMembers.length <= 1}
-                          className="text-theme-text-muted hover:text-rose-600 disabled:opacity-30 p-1"
-                          title="Delete row"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
+                        <div className="space-y-1">
+                          <label className="font-bold text-theme-text-muted flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-stone-400" />
+                            <span>Address / City</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={member.address || ''}
+                            onChange={(e) => handleMemberChange(index, 'address', e.target.value)}
+                            placeholder="e.g. Mumbai / Room 302"
+                            className="w-full px-3 py-1.5 rounded-xl border border-theme-border bg-theme-background text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Row 3: Dietary Preference & Operational Role Title */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div className="space-y-1">
+                          <label className="font-bold text-theme-text-main flex items-center gap-1">
+                            <span>Dietary Preference</span>
+                            <span className="text-[10px] text-theme-text-muted">(Syncs to Tags)</span>
+                          </label>
+                          <select
+                            value={member.dietaryPreference}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'dietaryPreference', e.target.value as any)
+                            }
+                            className="w-full px-3 py-1.5 rounded-xl border border-theme-border bg-theme-background font-semibold cursor-pointer"
+                          >
+                            <option value="pure_veg">🥗 Pure Veg (Vegetarian)</option>
+                            <option value="jain">🪷 Jain Food (No Root Vegetables)</option>
+                            <option value="non_veg">🍗 Non-Veg</option>
+                            <option value="vegan">🌱 Vegan</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="font-bold text-theme-text-main flex items-center gap-1">
+                            <Briefcase className="w-3 h-3 text-indigo-600" />
+                            <span>Operational Role / Coordinator</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={member.roleTitle || ''}
+                            onChange={(e) => handleMemberChange(index, 'roleTitle', e.target.value)}
+                            placeholder="e.g. Chief Host, Baraat Lead, Safawala POC"
+                            className="w-full px-3 py-1.5 rounded-xl border border-theme-border bg-theme-background text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Row 4: Member Individual Tags */}
+                      <div className="pt-2 border-t border-theme-border/50 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-theme-text-muted flex items-center gap-1">
+                            <TagIcon className="w-3 h-3 text-theme-secondary" />
+                            <span>Individual Member Tags</span>
+                          </span>
+                          <span className="text-[10px] text-theme-text-muted">
+                            Click tag to assign or remove from this member
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {allTags?.map((tag) => {
+                            const isTagged = member.tagIds?.includes(tag.id);
+                            return (
+                              <button
+                                key={tag.id}
+                                type="button"
+                                onClick={() => handleToggleMemberTag(index, tag.id)}
+                                className={`transition-all rounded-full ${
+                                  isTagged
+                                    ? 'ring-2 ring-theme-primary ring-offset-1 scale-105'
+                                    : 'opacity-50 hover:opacity-100 grayscale hover:grayscale-0'
+                                }`}
+                              >
+                                <TagBadge tag={tag} size="sm" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* View 2: Spreadsheet Table View (Quick Multi-Row Entry) */
+              <div className="overflow-x-auto max-h-[440px]">
+                <table className="w-full text-left border-collapse min-w-[1150px]">
+                  <thead>
+                    <tr className="border-b border-theme-border bg-theme-background/60 text-[10px] font-bold uppercase tracking-wider text-theme-text-muted">
+                      <th className="py-2.5 px-3 text-center w-12" title="Primary Contact">
+                        Primary
+                      </th>
+                      <th className="py-2.5 px-3 min-w-[140px]">Member Name *</th>
+                      <th className="py-2.5 px-3 min-w-[110px]">Nature / Age</th>
+                      <th className="py-2.5 px-3 text-center min-w-[80px]" title="Mark as Core Family">
+                        Core Fam?
+                      </th>
+                      <th className="py-2.5 px-3 min-w-[130px]">Personal Phone</th>
+                      <th className="py-2.5 px-3 min-w-[140px]">Personal Email</th>
+                      <th className="py-2.5 px-3 min-w-[130px]">Address</th>
+                      <th className="py-2.5 px-3 min-w-[130px]">Relation to Bride</th>
+                      <th className="py-2.5 px-3 min-w-[130px]">Relation to Groom</th>
+                      <th className="py-2.5 px-3 min-w-[110px]">Dietary</th>
+                      <th className="py-2.5 px-3 min-w-[140px]">Role Title</th>
+                      <th className="py-2.5 px-3 text-center w-10"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-theme-border/60 text-xs">
+                    {tabularMembers.map((member, index) => (
+                      <tr
+                        key={index}
+                        className={`hover:bg-theme-background/40 transition-colors ${
+                          member.isPrimaryContact ? 'bg-amber-500/5' : ''
+                        }`}
+                      >
+                        {/* Primary Radio */}
+                        <td className="py-2.5 px-3 text-center">
+                          <input
+                            type="radio"
+                            name="primaryContactSelectionTable"
+                            checked={member.isPrimaryContact}
+                            onChange={() => handleSelectPrimaryContact(index)}
+                            className="w-4 h-4 text-theme-primary focus:ring-theme-primary cursor-pointer"
+                            title="Mark as primary contact"
+                          />
+                        </td>
+
+                        {/* Name */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="text"
+                            value={member.name}
+                            onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
+                            placeholder={`Member #${index + 1}`}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-theme-primary"
+                            required
+                          />
+                        </td>
+
+                        {/* Age Tier */}
+                        <td className="py-2 px-3">
+                          <select
+                            value={member.ageCategory}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'ageCategory', e.target.value as any)
+                            }
+                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs font-medium cursor-pointer"
+                          >
+                            <option value="adult">👤 Adult (18+)</option>
+                            <option value="elder">👴 Elder / Senior</option>
+                            <option value="child">🧒 Child (2-12)</option>
+                            <option value="infant">👶 Infant (&lt;2)</option>
+                          </select>
+                        </td>
+
+                        {/* Core Family Checkbox */}
+                        <td className="py-2 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={!!member.isCoreFamily}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'isCoreFamily', e.target.checked)
+                            }
+                            className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 cursor-pointer"
+                            title="Check if this member is core family"
+                          />
+                        </td>
+
+                        {/* Personal Phone */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="tel"
+                            value={member.phone || ''}
+                            onChange={(e) => handleMemberChange(index, 'phone', e.target.value)}
+                            placeholder="+91..."
+                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
+                          />
+                        </td>
+
+                        {/* Personal Email */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="email"
+                            value={member.email || ''}
+                            onChange={(e) => handleMemberChange(index, 'email', e.target.value)}
+                            placeholder="email@..."
+                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
+                          />
+                        </td>
+
+                        {/* Address */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="text"
+                            value={member.address || ''}
+                            onChange={(e) => handleMemberChange(index, 'address', e.target.value)}
+                            placeholder="City / Street"
+                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
+                          />
+                        </td>
+
+                        {/* Relation to Bride */}
+                        <td className="py-2 px-3">
+                          <select
+                            value={member.relationToBride}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'relationToBride', e.target.value)
+                            }
+                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer text-rose-900"
+                          >
+                            {RELATION_GUIDE_OPTIONS.map((rel) => (
+                              <option key={rel} value={rel}>
+                                {rel}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Relation to Groom */}
+                        <td className="py-2 px-3">
+                          <select
+                            value={member.relationToGroom}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'relationToGroom', e.target.value)
+                            }
+                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer text-amber-900"
+                          >
+                            {RELATION_GUIDE_OPTIONS.map((rel) => (
+                              <option key={rel} value={rel}>
+                                {rel}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Dietary */}
+                        <td className="py-2 px-3">
+                          <select
+                            value={member.dietaryPreference}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'dietaryPreference', e.target.value as any)
+                            }
+                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs cursor-pointer"
+                          >
+                            <option value="pure_veg">Pure Veg</option>
+                            <option value="jain">Jain</option>
+                            <option value="non_veg">Non-Veg</option>
+                            <option value="vegan">Vegan</option>
+                          </select>
+                        </td>
+
+                        {/* Role Title */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="text"
+                            value={member.roleTitle || ''}
+                            onChange={(e) =>
+                              handleMemberChange(index, 'roleTitle', e.target.value)
+                            }
+                            placeholder="Operational Role"
+                            className="w-full px-2 py-1.5 rounded-lg border border-theme-border bg-theme-background text-xs"
+                          />
+                        </td>
+
+                        {/* Delete Member Row */}
+                        <td className="py-2 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMemberRow(index)}
+                            disabled={tabularMembers.length <= 1}
+                            className="text-theme-text-muted hover:text-rose-600 disabled:opacity-30 p-1"
+                            title="Delete row"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             <div className="p-2.5 bg-theme-background/60 border-t border-theme-border flex items-center justify-between text-xs text-theme-text-muted">
               <span>
                 Total: <strong>{tabularMembers.length} attendees</strong> (
-                {tabularMembers.filter((m) => m.isCoreFamily).length} Core Family)
+                {tabularMembers.filter((m) => m.isCoreFamily).length} Core Family,{' '}
+                {tabularMembers.filter((m) => m.dietaryPreference === 'jain').length} Jain)
               </span>
               <button
                 type="button"
                 onClick={handleAddMemberRow}
                 className="text-theme-primary font-bold hover:underline"
               >
-                + Add Member Row
+                + Add Member
               </button>
             </div>
           </div>
