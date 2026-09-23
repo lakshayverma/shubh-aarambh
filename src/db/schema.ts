@@ -95,6 +95,10 @@ export interface Guest {
   relationToGroom?: string;
   generationLevel?: number; // 1: Grandparent/Elder, 2: Parents/Uncles, 3: Couple/Siblings/Cousins, 4: Kids
   tagIds?: string[];
+  phone?: string;
+  email?: string;
+  address?: string;
+  isCoreFamily?: boolean;
   allergies?: string;
   specialAssistance?: string; // e.g. "Wheelchair", "Ground Floor", "Elderly Care"
 }
@@ -164,7 +168,7 @@ export interface Vehicle {
   id: string;
   weddingId: string;
   name: string; // e.g. "Innova Cresta 1", "Tempo Traveller A", "Groom's Brother Fortuner"
-  category: 'sedan_4' | 'sedan_5' | 'suv_6' | 'suv_7' | 'tempo_12' | 'van_14' | 'bus_30' | 'personal_car';
+  category: 'sedan_4' | 'sedan_5' | 'suv_6' | 'suv_7' | 'tempo_12' | 'van_12' | 'van_14' | 'van_16' | 'bus_30' | 'personal_car';
   plateNumber?: string;
   isPersonalVehicle: boolean;
   ownerGuestId?: string;
@@ -233,6 +237,7 @@ export interface EInvite {
     text: string;
     cardBg?: string;
     borderColor?: string;
+    patternColor?: string;
   };
   backgroundTheme?: 'damask' | 'mandala' | 'floral' | 'imperial_gradient' | 'clean_linen' | 'none';
   rsvpPhone?: string;
