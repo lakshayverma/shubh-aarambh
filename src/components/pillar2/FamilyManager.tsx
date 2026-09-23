@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { Wedding, FamilyMember, Tag, Guest, GuestParty, FamilyRelationLink } from '../../db/schema';
@@ -18,6 +18,8 @@ import {
   ConnectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+
+import { toPng } from 'html-to-image';
 
 import {
   Heart,
@@ -39,11 +41,15 @@ import {
   Share2,
   Workflow,
   ArrowRight,
+  Download,
 } from 'lucide-react';
+import { NestedScreen } from '../common/NestedScreen';
 
 interface FamilyManagerProps {
   wedding: Wedding;
   onOpenTagManager?: () => void;
+  defaultView?: 'directory' | 'graph';
+  hideHeader?: boolean;
 }
 
 export interface UnifiedRelativeItem {
@@ -66,18 +72,32 @@ export interface UnifiedRelativeItem {
 
 // Custom Node for React Flow
 const FamilyMemberNode: React.FC<{
-  data: { item: UnifiedRelativeItem; tags: Tag[] };
+  data: {
+    item: UnifiedRelativeItem;
+    tags: Tag[];
+    isSelected?: boolean;
+    isHighlighted?: boolean;
+    isDimmed?: boolean;
+  };
 }> = ({ data }) => {
-  const { item, tags } = data;
+  const { item, tags, isSelected, isHighlighted, isDimmed } = data;
   const isLadkiwale = item.side === 'ladkiwale';
+
+  let borderAndBg = isLadkiwale
+    ? 'border-rose-400 text-rose-950 shadow-rose-100'
+    : 'border-amber-500 text-amber-950 shadow-amber-100';
+
+  if (isDimmed) {
+    borderAndBg = 'opacity-25 grayscale-[40%] scale-95 border-stone-300 dark:border-stone-700';
+  } else if (isSelected) {
+    borderAndBg = 'ring-4 ring-amber-500 shadow-2xl scale-105 z-30 bg-amber-50 dark:bg-amber-950/80 border-amber-600';
+  } else if (isHighlighted) {
+    borderAndBg = 'ring-2 ring-amber-400 shadow-lg scale-102 z-20 bg-amber-50/50 dark:bg-amber-950/40 border-amber-500';
+  }
 
   return (
     <div
-      className={`p-3.5 rounded-2xl border-2 shadow-md min-w-[200px] max-w-[240px] bg-theme-card transition-all ${
-        isLadkiwale
-          ? 'border-rose-400 text-rose-950 shadow-rose-100'
-          : 'border-amber-500 text-amber-950 shadow-amber-100'
-      }`}
+      className={`p-3.5 rounded-2xl border-2 shadow-md min-w-[200px] max-w-[240px] bg-theme-card transition-all cursor-pointer select-none ${borderAndBg}`}
     >
       <Handle
         type="source"
@@ -200,6 +220,8 @@ const nodeTypes = {
 export const FamilyManager: React.FC<FamilyManagerProps> = ({
   wedding,
   onOpenTagManager,
+  defaultView = 'directory',
+  hideHeader = false,
 }) => {
   const members = useLiveQuery(
     () => db.familyMembers.where('weddingId').equals(wedding.id).toArray(),
@@ -222,10 +244,30 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
   const brideTerm = wedding.brideSideTerm || "Bride's Side (Ladkiwale)";
   const groomTerm = wedding.groomSideTerm || "Groom's Side (Ladkewale)";
 
-  const [viewMode, setViewMode] = useState<'directory' | 'graph'>('directory');
+  const [viewMode, setViewMode] = useState<'directory' | 'graph'>(defaultView);
   const [filterSource, setFilterSource] = useState<'all' | 'family_core' | 'guest_list'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
+
+  // Node selection for relation highlighting
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const flowContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleExportTreePng = async () => {
+    if (!flowContainerRef.current) return;
+    try {
+      const dataUrl = await toPng(flowContainerRef.current, {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+      });
+      const link = document.createElement('a');
+      link.download = `${wedding.title.replace(/[^a-z0-9]/gi, '_')}-family-tree.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to export family tree PNG:', err);
+    }
+  };
 
 
 
@@ -562,8 +604,60 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
       });
     }
 
-    return { flowNodes: nodes, flowEdges: edges };
-  }, [unifiedLadkewale, unifiedLadkiwale, allTags, filterSource, customRelations]);
+    // Relation Highlighting & Edge Dimming (Requirement 14)
+    const connectedEdgeIds = new Set<string>();
+    const connectedNodeIds = new Set<string>();
+
+    if (selectedNodeId) {
+      connectedNodeIds.add(selectedNodeId);
+      edges.forEach((edge) => {
+        if (edge.source === selectedNodeId || edge.target === selectedNodeId) {
+          connectedEdgeIds.add(edge.id);
+          connectedNodeIds.add(edge.source);
+          connectedNodeIds.add(edge.target);
+        }
+      });
+
+      // Style edges for highlighting
+      edges.forEach((edge) => {
+        if (connectedEdgeIds.has(edge.id)) {
+          edge.style = {
+            ...edge.style,
+            stroke: '#d97706',
+            strokeWidth: 4,
+          };
+          edge.animated = true;
+        } else {
+          edge.style = {
+            ...edge.style,
+            opacity: 0.12,
+            strokeWidth: 1,
+          };
+          edge.animated = false;
+        }
+      });
+    }
+
+    // Apply highlighting and draggable to nodes (Requirement 13 & 14)
+    const processedNodes = nodes.map((node) => {
+      const isSelected = node.id === selectedNodeId;
+      const isHighlighted = connectedNodeIds.has(node.id) && !isSelected;
+      const isDimmed = !!selectedNodeId && !connectedNodeIds.has(node.id);
+
+      return {
+        ...node,
+        draggable: true,
+        data: {
+          ...node.data,
+          isSelected,
+          isHighlighted,
+          isDimmed,
+        },
+      };
+    });
+
+    return { flowNodes: processedNodes, flowEdges: edges };
+  }, [unifiedLadkewale, unifiedLadkiwale, allTags, filterSource, customRelations, selectedNodeId]);
 
   const displayedLadkewale =
     filterSource === 'all'
@@ -654,89 +748,141 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Pillar Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-theme-card border border-theme-border p-5 rounded-3xl shadow-2xs">
-        <div>
+      {!hideHeader ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-theme-card border border-theme-border p-5 rounded-3xl shadow-2xs">
+          <div>
+            <div className="flex items-center gap-2">
+              <Heart className="w-5 h-5 text-theme-primary" />
+              <h2 className="text-xl font-bold font-serif text-theme-text-main">
+                Family Hierarchy & Relations
+              </h2>
+            </div>
+            <p className="text-xs text-theme-text-muted mt-1">
+              Unified family tree merging core wedding family units with guest list relatives, generation levels, and roles.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Source Filter */}
+            <div className="flex items-center bg-theme-background border border-theme-border rounded-xl p-1 text-xs">
+              <button
+                onClick={() => setFilterSource('all')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                  filterSource === 'all'
+                    ? 'bg-theme-card text-theme-primary shadow-2xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                All ({unifiedLadkewale.length + unifiedLadkiwale.length})
+              </button>
+              <button
+                onClick={() => setFilterSource('family_core')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                  filterSource === 'family_core'
+                    ? 'bg-theme-card text-theme-primary shadow-2xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                Core Family ({members?.length || 0})
+              </button>
+              <button
+                onClick={() => setFilterSource('guest_list')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                  filterSource === 'guest_list'
+                    ? 'bg-theme-card text-theme-primary shadow-2xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                Guest Relatives ({unifiedLadkewale.filter((m) => m.source === 'guest_list').length + unifiedLadkiwale.filter((m) => m.source === 'guest_list').length})
+              </button>
+            </div>
+
+            {/* Dual View Toggle */}
+            <div className="bg-theme-background border border-theme-border p-1 rounded-2xl flex items-center gap-1">
+              <button
+                onClick={() => setViewMode('directory')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  viewMode === 'directory'
+                    ? 'bg-theme-card text-theme-primary shadow-xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                <LayoutList className="w-3.5 h-3.5" />
+                <span>Cards</span>
+              </button>
+              <button
+                onClick={() => setViewMode('graph')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  viewMode === 'graph'
+                    ? 'bg-theme-card text-theme-primary shadow-xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                <GitGraph className="w-3.5 h-3.5" />
+                <span>Tree Graph</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => openAddModal()}
+              className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Add Core Member</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-theme-card border border-theme-border p-3.5 rounded-2xl shadow-2xs">
           <div className="flex items-center gap-2">
-            <Heart className="w-5 h-5 text-theme-primary" />
-            <h2 className="text-xl font-bold font-serif text-theme-text-main">
-              Family Hierarchy & Relations
-            </h2>
+            <span className="text-xs font-bold text-theme-text-muted uppercase tracking-wider">
+              Filter Relatives:
+            </span>
+            <div className="flex items-center bg-theme-background border border-theme-border rounded-xl p-1 text-xs">
+              <button
+                onClick={() => setFilterSource('all')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                  filterSource === 'all'
+                    ? 'bg-theme-card text-theme-primary shadow-2xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                All ({unifiedLadkewale.length + unifiedLadkiwale.length})
+              </button>
+              <button
+                onClick={() => setFilterSource('family_core')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                  filterSource === 'family_core'
+                    ? 'bg-theme-card text-theme-primary shadow-2xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                Core Family ({members?.length || 0})
+              </button>
+              <button
+                onClick={() => setFilterSource('guest_list')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                  filterSource === 'guest_list'
+                    ? 'bg-theme-card text-theme-primary shadow-2xs'
+                    : 'text-theme-text-muted hover:text-theme-text-main'
+                }`}
+              >
+                Guests ({unifiedLadkewale.filter((m) => m.source === 'guest_list').length + unifiedLadkiwale.filter((m) => m.source === 'guest_list').length})
+              </button>
+            </div>
           </div>
-          <p className="text-xs text-theme-text-muted mt-1">
-            Pillar 2: Unified family tree merging core wedding family units with guest list relatives, generation levels, and roles.
-          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openAddModal()}
+              className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Member</span>
+            </button>
+          </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Source Filter */}
-          <div className="flex items-center bg-theme-background border border-theme-border rounded-xl p-1 text-xs">
-            <button
-              onClick={() => setFilterSource('all')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                filterSource === 'all'
-                  ? 'bg-theme-card text-theme-primary shadow-2xs'
-                  : 'text-theme-text-muted hover:text-theme-text-main'
-              }`}
-            >
-              All ({unifiedLadkewale.length + unifiedLadkiwale.length})
-            </button>
-            <button
-              onClick={() => setFilterSource('family_core')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                filterSource === 'family_core'
-                  ? 'bg-theme-card text-theme-primary shadow-2xs'
-                  : 'text-theme-text-muted hover:text-theme-text-main'
-              }`}
-            >
-              Core Family ({members?.length || 0})
-            </button>
-            <button
-              onClick={() => setFilterSource('guest_list')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                filterSource === 'guest_list'
-                  ? 'bg-theme-card text-theme-primary shadow-2xs'
-                  : 'text-theme-text-muted hover:text-theme-text-main'
-              }`}
-            >
-              Guest Relatives ({unifiedLadkewale.filter((m) => m.source === 'guest_list').length + unifiedLadkiwale.filter((m) => m.source === 'guest_list').length})
-            </button>
-          </div>
-
-          {/* Dual View Toggle */}
-          <div className="bg-theme-background border border-theme-border p-1 rounded-2xl flex items-center gap-1">
-            <button
-              onClick={() => setViewMode('directory')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                viewMode === 'directory'
-                  ? 'bg-theme-card text-theme-primary shadow-xs'
-                  : 'text-theme-text-muted hover:text-theme-text-main'
-              }`}
-            >
-              <LayoutList className="w-3.5 h-3.5" />
-              <span>Cards</span>
-            </button>
-            <button
-              onClick={() => setViewMode('graph')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                viewMode === 'graph'
-                  ? 'bg-theme-card text-theme-primary shadow-xs'
-                  : 'text-theme-text-muted hover:text-theme-text-main'
-              }`}
-            >
-              <GitGraph className="w-3.5 h-3.5" />
-              <span>Tree Graph</span>
-            </button>
-          </div>
-
-          <button
-            onClick={() => openAddModal()}
-            className="inline-flex items-center gap-1.5 bg-theme-primary text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Add Core Member</span>
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* VIEW 1: Directory / Cards View */}
       {viewMode === 'directory' && (
@@ -841,9 +987,19 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportTreePng}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-theme-border bg-theme-background hover:bg-theme-card text-xs font-semibold text-theme-text-main shadow-2xs transition-colors"
+                title="Export high-resolution family tree as PNG image"
+              >
+                <Download className="w-3.5 h-3.5 text-theme-primary" />
+                <span>Export Tree as PNG</span>
+              </button>
+
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-theme-primary/10 border border-theme-primary/30 rounded-xl text-theme-primary font-semibold text-xs">
-                <Sparkles className="w-3.5 h-3.5 text-theme-primary" />
-                <span>Interactive Linking: Drag between any circular handles to connect &bull; Click line to edit/delete</span>
+                <Sparkles className="w-3.5 h-3.5 text-theme-primary shrink-0" />
+                <span className="hidden sm:inline">Click node to highlight kinship links &bull; Drag nodes freely &bull; Drag handles to link</span>
               </div>
             </div>
           </div>
@@ -894,13 +1050,21 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
           )}
 
           {/* Canvas with generous dimensions */}
-          <div className="w-full h-[720px] border border-theme-border/60 rounded-2xl overflow-hidden bg-theme-background">
+          <div
+            ref={flowContainerRef}
+            className="w-full h-[720px] border border-theme-border/60 rounded-2xl overflow-hidden bg-theme-background"
+          >
             <ReactFlow
               nodes={flowNodes}
               edges={flowEdges}
               nodeTypes={nodeTypes}
               onConnect={handleConnect}
               onEdgeClick={handleEdgeClick}
+              onNodeClick={(_event, node) => {
+                setSelectedNodeId((prev) => (prev === node.id ? null : node.id));
+              }}
+              onPaneClick={() => setSelectedNodeId(null)}
+              nodesDraggable={true}
               connectionMode={ConnectionMode.Loose}
               fitView
               minZoom={0.15}
@@ -917,155 +1081,144 @@ export const FamilyManager: React.FC<FamilyManagerProps> = ({
         </div>
       )}
 
-      {/* Add / Edit Core Family Member Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div
-            className="bg-theme-card border border-theme-border w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-theme-border bg-theme-background/60 flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-theme-text-main">
-                {editingMember ? 'Edit Family Member' : 'Add Core Family Member'}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-main"
+      {/* Add / Edit Core Family Member Drawer */}
+      <NestedScreen
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingMember ? 'Edit Family Member' : 'Add Core Family Member'}
+        subtitle="Manage key elders, hosts, and operational coordinators"
+        mode="drawer"
+        width="xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover active:scale-95 transition-all"
+            >
+              {editingMember ? 'Save Changes' : 'Add Member'}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Full Name *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Ramesh Kumar Verma"
+              className="w-full px-3.5 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-theme-primary"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Wedding Side *</label>
+              <select
+                value={side}
+                onChange={(e) => setSide(e.target.value as any)}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
               >
-                <X className="w-5 h-5" />
-              </button>
+                <option value="ladkewale">{groomTerm}</option>
+                <option value="ladkiwale">{brideTerm}</option>
+              </select>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Full Name *</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Ramesh Kumar Verma"
-                  className="w-full px-3.5 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-theme-primary"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Wedding Side *</label>
-                  <select
-                    value={side}
-                    onChange={(e) => setSide(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  >
-                    <option value="ladkewale">{groomTerm}</option>
-                    <option value="ladkiwale">{brideTerm}</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Relation / Kinship</label>
-                  <input
-                    type="text"
-                    value={relation}
-                    onChange={(e) => setRelation(e.target.value)}
-                    placeholder="e.g. Father, Mama, Bua, Sister"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Generation Tier</label>
-                  <select
-                    value={generationLevel}
-                    onChange={(e) => setGenerationLevel(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  >
-                    <option value={1}>Gen 1: Grandparents & Elders</option>
-                    <option value={2}>Gen 2: Parents, Uncles & Aunts</option>
-                    <option value={3}>Gen 3: Couple, Siblings, Cousins</option>
-                    <option value={4}>Gen 4: Children & Grandchildren</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">
-                    Key Role / Duty Title
-                  </label>
-                  <input
-                    type="text"
-                    value={roleTitle}
-                    onChange={(e) => setRoleTitle(e.target.value)}
-                    placeholder="e.g. Baraat Lead, Safawala POC"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Phone (WhatsApp)</label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98765 00000"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-theme-text-main">Email (Optional)</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Tag Selector */}
-              <TagSelector
-                weddingId={wedding.id}
-                selectedTagIds={selectedTagIds}
-                onChange={setSelectedTagIds}
-                onOpenManager={onOpenTagManager}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Relation / Kinship</label>
+              <input
+                type="text"
+                value={relation}
+                onChange={(e) => setRelation(e.target.value)}
+                placeholder="e.g. Father, Mama, Bua, Sister"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+                required
               />
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-theme-text-main">Notes & Key Duties</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Special requests, arrival notes, vendor contacts..."
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm resize-none"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-theme-border flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-theme-border bg-theme-card text-xs font-semibold text-theme-text-muted"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-theme-primary text-white text-xs font-bold shadow hover:bg-theme-primary-hover"
-                >
-                  {editingMember ? 'Save Changes' : 'Add Member'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Generation Tier</label>
+              <select
+                value={generationLevel}
+                onChange={(e) => setGenerationLevel(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              >
+                <option value={1}>Gen 1: Grandparents & Elders</option>
+                <option value={2}>Gen 2: Parents, Uncles & Aunts</option>
+                <option value={3}>Gen 3: Couple, Siblings, Cousins</option>
+                <option value={4}>Gen 4: Children & Grandchildren</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">
+                Key Role / Duty Title
+              </label>
+              <input
+                type="text"
+                value={roleTitle}
+                onChange={(e) => setRoleTitle(e.target.value)}
+                placeholder="e.g. Baraat Lead, Safawala POC"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Phone (WhatsApp)</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-theme-text-main">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@example.com"
+                className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm"
+              />
+            </div>
+          </div>
+
+          <TagSelector
+            selectedTagIds={selectedTagIds}
+            onChange={setSelectedTagIds}
+            weddingId={wedding.id}
+            onOpenManager={onOpenTagManager}
+          />
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-theme-text-main">Notes & Key Duties</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Special requests, arrival notes, vendor contacts..."
+              rows={2}
+              className="w-full px-3 py-2 rounded-xl border border-theme-border bg-theme-background text-theme-text-main text-xs sm:text-sm resize-none"
+            />
+          </div>
+        </form>
+      </NestedScreen>
     </div>
   );
 };
