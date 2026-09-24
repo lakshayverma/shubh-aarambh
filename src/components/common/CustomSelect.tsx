@@ -40,6 +40,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [openUpward, setOpenUpward] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,6 +92,20 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     }
   }, [isOpen, isSearchable]);
 
+  // Smart flip: detect whether dropdown should open downwards or upwards
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      // If space below is less than 280px and space above is greater than space below, flip upward
+      if (spaceBelow < 280 && rect.top > spaceBelow) {
+        setOpenUpward(true);
+      } else {
+        setOpenUpward(false);
+      }
+    }
+  }, [isOpen]);
+
   const sizeClasses = {
     sm: 'px-2.5 py-1.5 text-xs rounded-lg',
     md: 'px-3.5 py-2 text-sm rounded-xl',
@@ -119,7 +134,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   };
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className={`relative ${isOpen ? 'z-40' : 'z-auto'} ${className}`} ref={containerRef}>
       {label && (
         <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
           {label}
@@ -168,7 +183,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       {error && <p className="text-[11px] text-rose-500 mt-1">{error}</p>}
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-[100] max-h-72 flex flex-col rounded-xl border border-amber-200/90 bg-white shadow-2xl py-1 animate-fade-in divide-y divide-stone-100 overflow-hidden">
+        <div
+          className={`absolute left-0 right-0 ${
+            openUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+          } z-[100] max-h-72 min-w-[220px] flex flex-col rounded-xl border border-amber-200/90 bg-white shadow-2xl py-1 animate-fade-in divide-y divide-stone-100 overflow-hidden`}
+        >
           {isSearchable && (
             <div className="p-2 border-b border-stone-100 bg-stone-50/60 sticky top-0 z-10 shrink-0">
               <div className="relative">

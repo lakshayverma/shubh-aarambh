@@ -552,9 +552,11 @@ export const EInviteVideoStudio: React.FC<EInviteVideoStudioProps> = ({
 
           {/* SECTION 1: E-INVITE CONTEXT & METADATA BANNER */}
           {activeInvite && (
-            <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+            <div className="rounded-2xl border border-stone-200 bg-white shadow-2xs relative">
               <div
-                className="px-4 py-3 flex items-center justify-between cursor-pointer border-b border-stone-100 hover:bg-stone-50/60 transition-colors"
+                className={`px-4 py-3 flex items-center justify-between cursor-pointer border-b border-stone-100 hover:bg-stone-50/60 transition-colors rounded-t-2xl ${
+                  !showInviteDetails ? 'rounded-b-2xl border-b-0' : ''
+                }`}
                 onClick={() => setShowInviteDetails(!showInviteDetails)}
               >
                 <div className="flex items-center gap-2.5">
@@ -585,7 +587,7 @@ export const EInviteVideoStudio: React.FC<EInviteVideoStudioProps> = ({
               </div>
 
               {showInviteDetails && (
-                <div className="p-4 space-y-3 bg-stone-50/40 text-xs">
+                <div className="p-4 space-y-3 bg-stone-50/40 text-xs rounded-b-2xl">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="bg-white p-2.5 rounded-xl border border-stone-200 shadow-2xs">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
@@ -794,9 +796,11 @@ export const EInviteVideoStudio: React.FC<EInviteVideoStudioProps> = ({
           {activePassTab === 'pass1' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               {/* Pass 1 Specific Tweak Section: Story Arc, Theme & Accents */}
-              <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+              <div className="rounded-2xl border border-stone-200 bg-white shadow-2xs relative">
                 <div
-                  className="px-4 py-3 flex items-center justify-between cursor-pointer border-b border-stone-100 hover:bg-stone-50/60 transition-colors"
+                  className={`px-4 py-3 flex items-center justify-between cursor-pointer border-b border-stone-100 hover:bg-stone-50/60 transition-colors rounded-t-2xl ${
+                    !showPass1Tweaks ? 'rounded-b-2xl border-b-0' : ''
+                  }`}
                   onClick={() => setShowPass1Tweaks(!showPass1Tweaks)}
                 >
                   <div className="flex items-center gap-2">
@@ -813,7 +817,7 @@ export const EInviteVideoStudio: React.FC<EInviteVideoStudioProps> = ({
                 </div>
 
                 {showPass1Tweaks && (
-                  <div className="p-4 space-y-4 bg-stone-50/30 text-xs">
+                  <div className="p-4 space-y-4 bg-stone-50/30 text-xs rounded-b-2xl">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <CustomSelect
@@ -950,9 +954,11 @@ export const EInviteVideoStudio: React.FC<EInviteVideoStudioProps> = ({
           {activePassTab === 'pass2' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               {/* Pass 2 Specific Tweak Section: Lens Signature, Lighting & Color */}
-              <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+              <div className="rounded-2xl border border-stone-200 bg-white shadow-2xs relative">
                 <div
-                  className="px-4 py-3 flex items-center justify-between cursor-pointer border-b border-stone-100 hover:bg-stone-50/60 transition-colors"
+                  className={`px-4 py-3 flex items-center justify-between cursor-pointer border-b border-stone-100 hover:bg-stone-50/60 transition-colors rounded-t-2xl ${
+                    !showPass2Tweaks ? 'rounded-b-2xl border-b-0' : ''
+                  }`}
                   onClick={() => setShowPass2Tweaks(!showPass2Tweaks)}
                 >
                   <div className="flex items-center gap-2">
@@ -969,7 +975,7 @@ export const EInviteVideoStudio: React.FC<EInviteVideoStudioProps> = ({
                 </div>
 
                 {showPass2Tweaks && (
-                  <div className="p-4 space-y-4 bg-stone-50/30 text-xs">
+                  <div className="p-4 space-y-4 bg-stone-50/30 text-xs rounded-b-2xl">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <CustomSelect
@@ -1194,9 +1200,11 @@ export const EInviteVideoStudio: React.FC<EInviteVideoStudioProps> = ({
           {activePassTab === 'pass3' && (
             <div className="space-y-5 animate-in fade-in duration-150">
               {/* Pass 3 Specific Tweak Section: Language, Score & Foley */}
-              <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+              <div className="rounded-2xl border border-stone-200 bg-white shadow-2xs relative">
                 <div
-                  className="px-4 py-3 flex items-center justify-between cursor-pointer border-b border-stone-100 hover:bg-stone-50/60 transition-colors"
+                  className={`px-4 py-3 flex items-center justify-between cursor-pointer border-b border-stone-100 hover:bg-stone-50/60 transition-colors rounded-t-2xl ${
+                    !showPass3Tweaks ? 'rounded-b-2xl border-b-0' : ''
+                  }`}
                   onClick={() => setShowPass3Tweaks(!showPass3Tweaks)}
                 >
                   <div className="flex items-center gap-2">
@@ -1213,7 +1221,7 @@ export const EInviteVideoStudio: React.FC<EInviteVideoStudioProps> = ({
                 </div>
 
                 {showPass3Tweaks && (
-                  <div className="p-4 space-y-4 bg-stone-50/30 text-xs">
+                  <div className="p-4 space-y-4 bg-stone-50/30 text-xs rounded-b-2xl">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       {/* Language Selection Buttons */}
                       <div className="space-y-1.5">
