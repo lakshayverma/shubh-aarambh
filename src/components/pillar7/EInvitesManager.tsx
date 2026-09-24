@@ -33,8 +33,10 @@ import {
   Sun,
   Gem,
   Star,
+  Video,
 } from 'lucide-react';
 import { CustomSelect } from '../common/CustomSelect';
+import { EInviteVideoStudio } from './EInviteVideoStudio';
 
 interface EInvitesManagerProps {
   wedding: Wedding;
@@ -402,6 +404,7 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
   const [iconOption, setIconOption] = useState<string>('crown');
 
   const [isExportingPng, setIsExportingPng] = useState(false);
+  const [isVideoStudioOpen, setIsVideoStudioOpen] = useState(false);
 
   // Card reference for PNG capture
   const cardRef = useRef<HTMLDivElement>(null);
@@ -861,6 +864,16 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
                 All Variants ({invites?.length || 0})
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsVideoStudioOpen(true)}
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow hover:opacity-95 transition-all"
+              title="Synthesize Sora / Runway / Luma AI Video Prompts from this E-Invite"
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>AI Video Prompts</span>
+            </button>
 
             <button
               onClick={startNewInvite}
@@ -1720,6 +1733,16 @@ export const EInvitesManager: React.FC<EInvitesManagerProps> = ({ wedding }) => 
             )}
           </div>
         </div>
+      )}
+      
+      {/* Multi-Pass AI Video Studio Sub-Drawer */}
+      {isVideoStudioOpen && (
+        <EInviteVideoStudio
+          isOpen={isVideoStudioOpen}
+          onClose={() => setIsVideoStudioOpen(false)}
+          wedding={wedding}
+          initialInviteId={editingInviteId || undefined}
+        />
       )}
     </div>
   );
