@@ -7,7 +7,7 @@ interface NestedScreenProps {
   title: string;
   subtitle?: string;
   mode?: 'drawer' | 'modal';
-  width?: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | 'full';
+  width?: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | 'full';
   level?: 1 | 2;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -48,6 +48,28 @@ export const NestedScreen: React.FC<NestedScreenProps> = ({
     };
   }, [isOpen, level, onClose]);
 
+  // Lock root document scroll while drawer/modal is open (handles nested drawers via reference counting)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const currentCount = parseInt(document.body.getAttribute('data-nested-screens-open') || '0', 10);
+    document.body.setAttribute('data-nested-screens-open', (currentCount + 1).toString());
+
+    if (currentCount === 0) {
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      const remaining = Math.max(0, parseInt(document.body.getAttribute('data-nested-screens-open') || '1', 10) - 1);
+      if (remaining === 0) {
+        document.body.removeAttribute('data-nested-screens-open');
+        document.body.style.overflow = '';
+      } else {
+        document.body.setAttribute('data-nested-screens-open', remaining.toString());
+      }
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const widthClasses = {
@@ -57,6 +79,8 @@ export const NestedScreen: React.FC<NestedScreenProps> = ({
     '2xl': 'max-w-2xl',
     '3xl': 'max-w-4xl',
     '4xl': 'max-w-5xl',
+    '5xl': 'max-w-6xl',
+    '6xl': 'max-w-7xl',
     full: 'max-w-full',
   }[width];
 
