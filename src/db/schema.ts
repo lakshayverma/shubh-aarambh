@@ -9,6 +9,16 @@ export interface WeddingCustomColors {
   textMain?: string;
 }
 
+export interface WeddingAISettings {
+  openaiApiKey?: string;
+  openaiModel?: string; // 'gpt-4o', 'gpt-4o-mini', 'o3-mini'
+  geminiApiKey?: string;
+  geminiModel?: string; // 'gemini-3.6-flash', 'gemini-1.5-pro'
+  claudeApiKey?: string;
+  claudeModel?: string; // 'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022'
+  preferredProvider?: 'gemini' | 'openai' | 'claude';
+}
+
 export interface Wedding {
   id: string;
   title: string;
@@ -26,6 +36,7 @@ export interface Wedding {
   coverImage?: string;
   theme: string;
   customColors?: WeddingCustomColors;
+  aiSettings?: WeddingAISettings;
   notes?: string;
   createdAt: number;
   updatedAt: number;
@@ -261,7 +272,32 @@ export interface EInvite {
   iconOption?: string;
   rsvpPhone?: string;
   googleMapsUrl?: string;
+  videoConfig?: EInviteVideoConfig;
   createdAt: number;
+}
+
+export interface EInviteVideoConfig {
+  targetModel?: 'sora' | 'runway_gen3' | 'luma_dream' | 'google_veo' | 'pika';
+  tweakOptions?: {
+    visualStyle?: string;
+    lensPreset?: string;
+    lightingPreset?: string;
+    pacingPreset?: string;
+    culturalAccents?: string[];
+    voLanguage?: 'english' | 'hindi' | 'hinglish';
+    customNotes?: string;
+    // Pass 1 Specific Tweaks
+    narrativeNotes?: string;
+    // Pass 2 Specific Tweaks
+    colorTonePreset?: string;
+    // Pass 3 Specific Tweaks
+    musicPreset?: string;
+    foleyPreset?: string;
+  };
+  customInstructions?: string;
+  savedPromptPack?: any;
+  lastGeneratedAt?: number;
+  lastUpdatedAt?: number;
 }
 
 export interface FamilyRelationLink {

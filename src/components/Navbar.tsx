@@ -20,14 +20,17 @@ import {
   WifiOff,
   Check,
   MapPin,
+  KeyRound,
 } from 'lucide-react';
+import { hasConfiguredAIKey, AI_SETTINGS_UPDATED_EVENT } from '../services/aiService';
 
 interface NavbarProps {
   onOpenCreateModal: () => void;
   onOpenTagManager?: () => void;
+  onOpenAIKeyManager?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenAIKeyManager }) => {
   const { weddings, activeWedding, activeWeddingId, setActiveWeddingId } = useWedding();
   const { theme, setTheme, currentThemeConfig } = useTheme();
 
@@ -35,10 +38,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
   const [isGearMenuOpen, setIsGearMenuOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [backupNotice, setBackupNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [hasAIKey, setHasAIKey] = useState(hasConfiguredAIKey());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const switcherRef = useRef<HTMLDivElement>(null);
   const gearMenuRef = useRef<HTMLDivElement>(null);
+
+  // Synchronize AI key state
+  useEffect(() => {
+    const handleUpdate = () => setHasAIKey(hasConfiguredAIKey());
+    window.addEventListener(AI_SETTINGS_UPDATED_EVENT, handleUpdate);
+    return () => window.removeEventListener(AI_SETTINGS_UPDATED_EVENT, handleUpdate);
+  }, []);
 
   // Online / Offline listener
   useEffect(() => {
@@ -264,20 +275,39 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
             </div>
           )}
 
-          {/* Right: Settings Submenu via Gear Icon */}
-          <div className="relative" ref={gearMenuRef}>
+          {/* Right: AI Key Manager & Settings Submenu */}
+          <div className="flex items-center gap-2">
+            {/* AI Key Manager Quick Trigger */}
             <button
-              onClick={() => setIsGearMenuOpen(!isGearMenuOpen)}
-              className={`p-2.5 rounded-xl border transition-all ${
-                isGearMenuOpen
-                  ? 'border-theme-primary ring-2 ring-theme-primary/20 bg-theme-primary-light text-theme-primary'
-                  : 'border-theme-border bg-theme-background hover:bg-theme-border/30 text-theme-text-main shadow-2xs'
-              }`}
-              title="Settings & System Menu"
-              aria-label="Settings"
+              type="button"
+              onClick={onOpenAIKeyManager}
+              className="relative p-2.5 rounded-xl border border-theme-border bg-theme-background hover:bg-theme-border/30 text-theme-text-main shadow-2xs transition-all flex items-center justify-center"
+              title="App-Wide AI Key & Model Manager"
+              aria-label="AI Key Manager"
             >
-              <Settings className={`w-5 h-5 transition-transform duration-200 ${isGearMenuOpen ? 'rotate-90' : ''}`} />
+              <KeyRound className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              {hasAIKey && (
+                <span
+                  className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-stone-900"
+                  title="AI Keys Active"
+                />
+              )}
             </button>
+
+            {/* Settings Submenu via Gear Icon */}
+            <div className="relative" ref={gearMenuRef}>
+              <button
+                onClick={() => setIsGearMenuOpen(!isGearMenuOpen)}
+                className={`p-2.5 rounded-xl border transition-all ${
+                  isGearMenuOpen
+                    ? 'border-theme-primary ring-2 ring-theme-primary/20 bg-theme-primary-light text-theme-primary'
+                    : 'border-theme-border bg-theme-background hover:bg-theme-border/30 text-theme-text-main shadow-2xs'
+                }`}
+                title="Settings & System Menu"
+                aria-label="Settings"
+              >
+                <Settings className={`w-5 h-5 transition-transform duration-200 ${isGearMenuOpen ? 'rotate-90' : ''}`} />
+              </button>
 
             {isGearMenuOpen && (
               <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-theme-card border border-theme-border shadow-2xl py-3 z-50 animate-fade-in space-y-3">
@@ -332,6 +362,39 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
                   </div>
                 </div>
 
+                {/* AI Credentials App-Wide Section */}
+                <div className="border-t border-theme-border/60 pt-3 px-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-theme-text-muted">
+                      App-Wide AI Credentials
+                    </span>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        hasAIKey
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-stone-100 text-stone-600 border-stone-200'
+                      }`}
+                    >
+                      {hasAIKey ? 'Active' : 'Not Set'}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGearMenuOpen(false);
+                      onOpenAIKeyManager?.();
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl border border-theme-border/80 bg-theme-background hover:bg-amber-50/50 hover:border-amber-300 text-xs font-semibold text-theme-text-main transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Manage AI Keys & Models</span>
+                    </div>
+                    <span className="text-[10px] text-theme-text-muted">&rarr;</span>
+                  </button>
+                </div>
+
                 {/* Backup & Portability Section */}
                 <div className="border-t border-theme-border/60 pt-3 px-4 space-y-2">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-theme-text-muted">
@@ -364,6 +427,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal }) => {
             )}
           </div>
         </div>
+      </div>
 
         {/* Backup Feedback Notice */}
         {backupNotice && (

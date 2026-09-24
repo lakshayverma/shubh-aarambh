@@ -8,11 +8,21 @@ import { CreateWeddingModal } from './components/CreateWeddingModal';
 import { WeddingCommandCenter } from './components/WeddingCommandCenter';
 import { TagManagerModal } from './components/tags/TagManagerModal';
 import { PublicInviteView } from './components/PublicInviteView';
+import { AIKeyManagerModal } from './components/AIKeyManagerModal';
+import { OPEN_AI_KEY_MANAGER_EVENT } from './services/aiService';
 
 function MainApp() {
   const { activeWedding, activeWeddingId, isLoading } = useWedding();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
+  const [isAIKeyManagerOpen, setIsAIKeyManagerOpen] = useState(false);
+
+  // Global listener to open AI Key Manager from anywhere in the app
+  useEffect(() => {
+    const handleOpen = () => setIsAIKeyManagerOpen(true);
+    window.addEventListener(OPEN_AI_KEY_MANAGER_EVENT, handleOpen);
+    return () => window.removeEventListener(OPEN_AI_KEY_MANAGER_EVENT, handleOpen);
+  }, []);
 
   // Hash-based routing for standalone e-invite view: #/invite/:slug
   const [currentHash, setCurrentHash] = useState(window.location.hash);
@@ -91,6 +101,7 @@ function MainApp() {
       <Navbar
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
         onOpenTagManager={() => setIsTagManagerOpen(true)}
+        onOpenAIKeyManager={() => setIsAIKeyManagerOpen(true)}
       />
 
       <main className="flex-1 pb-16">
@@ -118,6 +129,12 @@ function MainApp() {
           weddingId={activeWeddingId}
         />
       )}
+
+      {/* App-Wide AI Key & Model Manager Modal */}
+      <AIKeyManagerModal
+        isOpen={isAIKeyManagerOpen}
+        onClose={() => setIsAIKeyManagerOpen(false)}
+      />
     </div>
   );
 }
